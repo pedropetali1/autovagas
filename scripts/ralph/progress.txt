@@ -1,4 +1,5 @@
 ## Codebase Patterns
+- Supabase Storage: use service role key client in lib/supabase.ts; `createSignedUploadUrl(path, { upsert: true })` for overwrite-safe presigned upload URLs; `getPublicUrl(path)` for public read URL
 - tRPC v11 + Next.js App Router: use `fetchRequestHandler` from `@trpc/server/adapters/fetch` in `app/api/trpc/[trpc]/route.ts`
 - Clerk v7 auth in tRPC context: `const { userId: clerkId } = await auth()` from `@clerk/nextjs/server`
 - tRPC protectedProcedure loads full user from Prisma and adds to ctx; access as `ctx.user` in procedure handlers
@@ -106,4 +107,17 @@ Started: Mon Mar 23 11:54:39 PDT 2026
   - Stripe webhook handler: use `request.text()` (not `.json()`) before constructEvent() — body must be raw string
   - Plan→priceId mapping comes from env vars (STRIPE_PRICE_PLUS, STRIPE_PRICE_PRO); PLAN_CONFIG maps priceId→{plan, dailyQuota}
   - userId is stored in checkout session metadata at creation time; subscription.metadata?.userId for deletion events
+---
+
+## 2026-03-23 - US-007
+- Installed @supabase/supabase-js
+- Created `autovagas/lib/supabase.ts`: Supabase service-role client singleton with comment about bucket RLS policy requirement
+- Added `user.getUploadUrl` mutation: calls `supabase.storage.from('cvs').createSignedUploadUrl('{userId}/cv.pdf', { upsert: true })` — returns { signedUrl, token, path }
+- Added `user.confirmCvUpload` mutation: calls `supabase.storage.from('cvs').getPublicUrl('{userId}/cv.pdf')` and updates User.cvUrl
+- Files changed: autovagas/lib/supabase.ts, autovagas/server/routers/user.ts, autovagas/package.json, autovagas/package-lock.json
+- **Learnings for future iterations:**
+  - Supabase `createSignedUploadUrl` returns `{ signedUrl, token, path }` — client uses `signedUrl` with PUT request or Supabase JS `uploadToSignedUrl`
+  - Pass `{ upsert: true }` to `createSignedUploadUrl` so re-uploading the same path overwrites the file
+  - The bucket 'cvs' RLS policy is a Supabase dashboard config, not code: `(auth.uid()::text = storage.foldername(name)[1])` restricts direct client access to the file owner's folder
+  - Server-side operations use service role key so they bypass RLS by design
 ---

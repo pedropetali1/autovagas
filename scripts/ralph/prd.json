@@ -112,8 +112,8 @@
         "Typecheck passes"
       ],
       "priority": 7,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Installed @supabase/supabase-js. Created lib/supabase.ts with service-role client singleton. Added user.getUploadUrl mutation (createSignedUploadUrl with upsert:true for cvs/{userId}/cv.pdf) and user.confirmCvUpload mutation (getPublicUrl + update User.cvUrl). RLS policy for bucket 'cvs' documented in lib/supabase.ts comment. Typecheck passes."
     },
     {
       "id": "US-008",
