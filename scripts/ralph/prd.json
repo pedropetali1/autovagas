@@ -146,8 +146,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 9,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Added Notificações section with 3 Toggle components (emailDigest, emailOnViewed, emailOnFailed) saved via user.updateNotificationPrefs. Added Filtros section with minSalary field (saves via user.updateProfile) and exclude companies input with removable tags (addExcludeCompany/removeExcludeCompany). All sections show skeleton loaders while loading. Typecheck passes."
     },
     {
       "id": "US-010",

@@ -141,3 +141,16 @@ Started: Mon Mar 23 11:54:39 PDT 2026
   - For CV upload: GET signedUrl from tRPC, then PUT file directly to Supabase Storage signedUrl
   - Use a `synced` boolean flag to sync server data into controlled form state once on load
 ---
+
+## 2026-03-23 - US-009
+- Added Notificações section to `/perfil` page with 3 Toggle components (emailDigest, emailOnViewed, emailOnFailed); saves via user.updateNotificationPrefs on each toggle click
+- Added Filtros section with minSalary field (saves via user.updateProfile on form submit) and exclude-companies input with removable tag chips (addExcludeCompany/removeExcludeCompany)
+- Extracted reusable `Toggle` component (accessible button with role="switch" and aria-checked)
+- Moved minSalary from the personal data form to the Filtros section per AC
+- All sections show skeleton loaders while query is loading
+- Files changed: autovagas/app/perfil/page.tsx
+- **Learnings for future iterations:**
+  - Toggle (switch) pattern: use `<button role="switch" aria-checked={checked}>` for accessibility
+  - Notification prefs are saved immediately on toggle change (no save button needed) — optimistic UI via local state update first, then mutation
+  - excludeCompanies array is managed server-side via push/set; client reflects via query invalidation
+---
