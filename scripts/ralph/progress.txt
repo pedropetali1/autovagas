@@ -219,3 +219,22 @@ Started: Mon Mar 23 11:54:39 PDT 2026
   - For plan card UI: grid-cols-3 with Pro card using dark (gray-900) background for visual hierarchy
   - Disable 'Assinar' button while mutation is pending using `createCheckoutSession.isPending`
 ---
+
+## 2026-03-23 - US-014
+- Replaced placeholder app/page.tsx with full SSG landing page
+- Hero section: Playfair Display headline + DM Sans body font + 'Começar grátis' CTA
+- Como funciona section: 3 illustrated steps with SVG icons (Busca vagas, Analisa compatibilidade, Candidata automaticamente)
+- Stats section: 3 stats cards (10.000+ candidaturas, 50.000+ vagas/dia, 2.500+ usuários)
+- Pricing section: hardcoded PLANS array (mirrors billing.ts PLANS) rendered as static plan cards with /sign-up links
+- Final CTA section with Clerk /sign-up link
+- Nav with Entrar (/sign-in) and Começar grátis (/sign-up) links
+- Design system: #fafaf8 background, border #e8e7e0, DM Sans body, Playfair Display headings
+- Both fonts loaded via next/font/google with CSS variables (--font-playfair, --font-dm-sans)
+- Page is SSG by default (no dynamic data, no 'use client' directive)
+- Files changed: autovagas/app/page.tsx
+- **Learnings for future iterations:**
+  - SSG in Next.js App Router: just don't use 'use client' or dynamic data — no need for generateStaticParams or export const dynamic = 'force-static'
+  - next/font/google: load multiple fonts with separate calls, pass `.variable` to className to expose CSS variable, then reference via style prop or Tailwind
+  - Static pricing section on landing: hardcode PLANS array (same data as billing router) — don't call tRPC from SSG page
+  - Clerk signup/signin routes: /sign-up and /sign-in (configured via Clerk middleware)
+---
