@@ -1,4 +1,7 @@
 ## Codebase Patterns
+- tRPC v11 + Next.js App Router: use `fetchRequestHandler` from `@trpc/server/adapters/fetch` in `app/api/trpc/[trpc]/route.ts`
+- Clerk v7 auth in tRPC context: `const { userId: clerkId } = await auth()` from `@clerk/nextjs/server`
+- tRPC protectedProcedure loads full user from Prisma and adds to ctx; access as `ctx.user` in procedure handlers
 - Prisma 7 has breaking changes: no `url` in datasource block; URL goes in `prisma.config.ts`
 - `binaries.prisma.sh` (Prisma CDN) is unreachable in this environment; use custom schema engine
 - Custom schema engine (`scripts/schema-engine.mjs`) handles all Prisma RPC + CLI calls
@@ -57,4 +60,19 @@ Started: Mon Mar 23 11:54:39 PDT 2026
   - `.env` is gitignored — add new env vars there locally but do NOT commit
   - Next.js App Router route handlers: `export async function POST(request: Request)` in `app/.../route.ts`
   - Svix headers are `svix-id`, `svix-timestamp`, `svix-signature` (lowercase)
+---
+
+## 2026-03-23 - US-004
+- Installed @trpc/server@11, @trpc/client, @trpc/react-query, @tanstack/react-query, zod, @clerk/nextjs@7, superjson
+- Created `server/trpc.ts`: createTRPCContext using Clerk auth(), protectedProcedure enforces auth and loads User from DB
+- Created `server/routers/user.ts` with 9 procedures: getProfile, updateProfile, addSkill, removeSkill, updateNotificationPrefs, toggleAutomation, addExcludeCompany, removeExcludeCompany
+- Created `server/routers/_app.ts` as root AppRouter
+- Created `app/api/trpc/[trpc]/route.ts` using fetchRequestHandler from @trpc/server/adapters/fetch
+- Typecheck passes
+- Files changed: server/trpc.ts, server/routers/user.ts, server/routers/_app.ts, app/api/trpc/[trpc]/route.ts, package.json, package-lock.json
+- **Learnings for future iterations:**
+  - tRPC v11: `initTRPC.context<Context>().create({ transformer: superjson })` pattern
+  - Clerk v7 `auth()` is async in server contexts; returns `{ userId }` (clerkId)
+  - Prisma `excludeCompanies` array: use `{ push: value }` to append, `{ set: filteredArray }` to remove
+  - `@clerk/nextjs/server` exports: `auth` (App Router), `currentUser`, `clerkMiddleware`
 ---

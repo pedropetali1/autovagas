@@ -65,8 +65,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Installed @trpc/server v11, @trpc/client, @trpc/react-query, @tanstack/react-query, zod, @clerk/nextjs v7, superjson. Created server/trpc.ts with createTRPCContext (uses Clerk auth()), protectedProcedure middleware that enforces auth and loads user from DB. Created server/routers/user.ts with all 9 procedures. Created server/routers/_app.ts as root router. Created app/api/trpc/[trpc]/route.ts using fetchRequestHandler. Typecheck passes."
     },
     {
       "id": "US-005",
