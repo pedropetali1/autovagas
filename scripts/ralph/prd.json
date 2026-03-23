@@ -198,8 +198,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 12,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Made ApplicationCard clickable (role=button, onClick/onKeyDown). Added ApplicationDetailModal component: header with job title/company/close button, meta row with StatusBadge/matchScore/appliedAt, FORM_NOT_SUPPORTED amber notice with 'Candidatar manualmente' link, and LogTimeline component. LogTimeline calls trpc.application.getLogs.useQuery, shows skeleton while loading, renders vertical timeline with emoji icons per LogAction (SCRAPE/MATCH/FILL_FORM/SUBMIT/SCREENSHOT), formatted pt-BR timestamps, DetailKeyValue for detail JSON, and clickable screenshot thumbnails. Added appliedAt to ApplicationItem type. Typecheck passes."
     },
     {
       "id": "US-013",

@@ -188,3 +188,19 @@ Started: Mon Mar 23 11:54:39 PDT 2026
   - `hasNextPage` and `fetchNextPage` / `isFetchingNextPage` are destructured from useInfiniteQuery result
   - For conditional enum filter: use `(statusFilter as string) || undefined` to convert empty string to undefined for optional tRPC input
 ---
+
+## 2026-03-23 - US-012
+- Made ApplicationCard clickable (role="button", onClick/onKeyDown) to open detail modal
+- Added ApplicationDetailModal: fixed overlay with backdrop, panel with header (job title, company, close ×), meta row (StatusBadge, matchScore %, appliedAt), FORM_NOT_SUPPORTED amber notice with 'Candidatar manualmente' link
+- Added LogTimeline component: calls trpc.application.getLogs.useQuery, skeleton while loading, vertical timeline with connecting lines
+- Log entries: emoji icon per LogAction (SCRAPE🔍, MATCH⚡, FILL_FORM✏️, SUBMIT📤, SCREENSHOT📸), pt-BR formatted timestamp, DetailKeyValue renders detail JSON as key-value pairs
+- SCREENSHOT entries show clickable thumbnail (<img>) that opens screenshotUrl in new tab
+- Added appliedAt: Date | null to ApplicationItem type (available from list query since it returns all Application columns)
+- Files changed: autovagas/app/vagas/page.tsx
+- **Learnings for future iterations:**
+  - Modal pattern: fixed inset-0 z-50 flex, backdrop div with onClick=onClose, panel div as relative child
+  - To stop the "Candidatar manualmente" link from also triggering the card's onClick, use e.stopPropagation() on the link's onClick
+  - Prisma ApplicationLog.detail is typed as Prisma.JsonValue (unknown at runtime); cast to Record<string, unknown> for rendering
+  - Vertical timeline with connecting lines: flex-col items, w-px flex-1 bg-gray-200 connector between items (skip on last)
+  - appliedAt comes from application.list query since it uses include (returns all columns), not select
+---
