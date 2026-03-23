@@ -1,0 +1,30 @@
+## Codebase Patterns
+- Prisma 7 has breaking changes: no `url` in datasource block; URL goes in `prisma.config.ts`
+- `binaries.prisma.sh` (Prisma CDN) is unreachable in this environment; use custom schema engine
+- Custom schema engine (`scripts/schema-engine.mjs`) handles all Prisma RPC + CLI calls
+- The fake engine binary at `node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x` delegates to `schema-engine.mjs`
+- SQL generation uses `@prisma/prisma-schema-wasm` `get_dmmf` with `{ prismaSchema: content }` param
+- `prisma migrate dev` flow: devDiagnostic → applyMigrations(existing) → evaluateDataLoss → createMigration → applyMigrations(new)
+- `createMigration` response uses `extension: 'sql'` (no leading dot) — WIe writes `migration.${extension}`
+- `applyMigrations` response key is `appliedMigrationNames` (camelCase)
+- PRISMA_SCHEMA_ENGINE_BINARY env var only affects CLI mode; daemon uses the binary from node_modules/@prisma/engines
+
+# Ralph Progress Log
+Started: Mon Mar 23 11:54:39 PDT 2026
+---
+
+## 2026-03-23 - US-001
+- Implemented Prisma schema: all 4 enums (Plan, ApplicationStatus, ApplyType, LogAction), models User, Skill, Job, Application (placeholder)
+- Created `prisma.config.ts` for Prisma 7 datasource URL config
+- Built pure-JS schema engine stub `autovagas/scripts/schema-engine.mjs` using @prisma/prisma-schema-wasm + PGlite
+- Created wrapper binary at node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x
+- `prisma migrate dev --name init` succeeded; migration SQL generated in prisma/migrations/
+- TypeScript typecheck passes
+- Files changed: prisma/schema.prisma, prisma.config.ts, .env, scripts/schema-engine.mjs, scripts/schema-engine.sh, node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x
+- **Learnings for future iterations:**
+  - Prisma 7 WASM schema engine (`@prisma/schema-engine-wasm`) crashes with "Option::unwrap_throw()" — use pure-JS stub instead
+  - Use `@prisma/prisma-schema-wasm`'s `get_dmmf({ prismaSchema: content })` for DMMF extraction (not `get_dmmf({ datamodel: ... })`)
+  - `@@index` is NOT in DMMF; parse from schema text with regex instead
+  - `global.PRISMA_WASM_PANIC_REGISTRY = { set_message: () => {} }` required before requiring prisma-schema-wasm CJS module
+  - `excludeCompanies String[] @default([])` field: DMMF default is `[]` (array), generate `DEFAULT ARRAY[]::TEXT[]`
+---

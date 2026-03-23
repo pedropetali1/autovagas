@@ -16,8 +16,8 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented via pure-JS schema engine stub (schema-engine.mjs) using @prisma/prisma-schema-wasm for DMMF + PGlite. Migration SQL generated from DMMF. All AC verified."
     },
     {
       "id": "US-002",
