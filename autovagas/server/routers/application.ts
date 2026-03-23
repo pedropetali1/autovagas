@@ -46,7 +46,10 @@ export const applicationRouter = createTRPCRouter({
     }),
 
   getStats: protectedProcedure.query(async ({ ctx }) => {
-    const [aggregate, sentCount, failedCount, viewedCount] = await Promise.all([
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+
+    const [aggregate, sentCount, failedCount, viewedCount, todayCount] = await Promise.all([
       ctx.prisma.application.aggregate({
         where: { userId: ctx.user.id },
         _count: { id: true },
@@ -61,6 +64,9 @@ export const applicationRouter = createTRPCRouter({
       ctx.prisma.application.count({
         where: { userId: ctx.user.id, status: 'VIEWED' },
       }),
+      ctx.prisma.application.count({
+        where: { userId: ctx.user.id, createdAt: { gte: todayStart } },
+      }),
     ])
 
     return {
@@ -69,6 +75,7 @@ export const applicationRouter = createTRPCRouter({
       failed: failedCount,
       avgScore: aggregate._avg.matchScore ?? 0,
       viewedCount,
+      todayCount,
     }
   }),
 
