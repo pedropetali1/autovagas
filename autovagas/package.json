@@ -9,18 +9,25 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.0.6",
     "@electric-sql/pglite": "^0.4.1",
     "@electric-sql/pglite-socket": "^0.1.1",
     "@libsql/client": "^0.17.2",
     "@prisma/adapter-libsql": "^7.5.0",
     "@prisma/client": "^7.5.0",
     "@prisma/internals": "^7.5.0",
+    "@tanstack/react-query": "^5.95.2",
+    "@trpc/client": "^11.15.0",
+    "@trpc/react-query": "^11.15.0",
+    "@trpc/server": "^11.15.0",
     "better-sqlite3": "^12.8.0",
     "next": "16.2.1",
     "prisma": "^7.5.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "svix": "^1.89.0"
+    "superjson": "^2.2.6",
+    "svix": "^1.89.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
