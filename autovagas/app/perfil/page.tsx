@@ -29,6 +29,38 @@ function Skeleton({ className }: { className?: string }) {
   )
 }
 
+// ─── Toggle ──────────────────────────────────────────────────────────────────
+function Toggle({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean
+  onChange: (v: boolean) => void
+  label: string
+}) {
+  return (
+    <label className="flex items-center justify-between cursor-pointer select-none">
+      <span className="text-sm text-gray-700">{label}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-1 ${
+          checked ? 'bg-gray-900' : 'bg-gray-300'
+        }`}
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+            checked ? 'translate-x-6' : 'translate-x-1'
+          }`}
+        />
+      </button>
+    </label>
+  )
+}
+
 // ─── Profile Form ─────────────────────────────────────────────────────────────
 function ProfileForm() {
   const toast = useToast()
@@ -50,12 +82,28 @@ function ProfileForm() {
     onSuccess: () => utils.user.getProfile.invalidate(),
   })
 
+  const updateNotificationPrefs = trpc.user.updateNotificationPrefs.useMutation({
+    onSuccess: () => {
+      toast.show('Notificações salvas')
+      utils.user.getProfile.invalidate()
+    },
+  })
+
+  const addExcludeCompany = trpc.user.addExcludeCompany.useMutation({
+    onSuccess: () => utils.user.getProfile.invalidate(),
+  })
+
+  const removeExcludeCompany = trpc.user.removeExcludeCompany.useMutation({
+    onSuccess: () => utils.user.getProfile.invalidate(),
+  })
+
   const getUploadUrl = trpc.user.getUploadUrl.useMutation()
   const confirmCvUpload = trpc.user.confirmCvUpload.useMutation({
     onSuccess: () => utils.user.getProfile.invalidate(),
   })
 
   const [skillInput, setSkillInput] = useState('')
+  const [companyInput, setCompanyInput] = useState('')
   const [cvUploading, setCvUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -66,10 +114,19 @@ function ProfileForm() {
     zipCode: '',
     linkedinUrl: '',
     desiredRole: '',
-    minSalary: '',
   })
 
-  // Sync form when profile loads
+  // ─── Notification prefs state ───────────────────────────────────────────
+  const [notifPrefs, setNotifPrefs] = useState({
+    emailDigest: true,
+    emailOnViewed: true,
+    emailOnFailed: true,
+  })
+
+  // ─── Filtros state ──────────────────────────────────────────────────────
+  const [minSalary, setMinSalary] = useState('')
+
+  // Sync form when profile loads (once)
   const [synced, setSynced] = useState(false)
   if (profile && !synced) {
     setForm({
@@ -78,8 +135,13 @@ function ProfileForm() {
       zipCode: profile.zipCode ?? '',
       linkedinUrl: profile.linkedinUrl ?? '',
       desiredRole: profile.desiredRole ?? '',
-      minSalary: profile.minSalary != null ? String(profile.minSalary) : '',
     })
+    setNotifPrefs({
+      emailDigest: profile.emailDigest,
+      emailOnViewed: profile.emailOnViewed,
+      emailOnFailed: profile.emailOnFailed,
+    })
+    setMinSalary(profile.minSalary != null ? String(profile.minSalary) : '')
     setSynced(true)
   }
 
@@ -95,8 +157,21 @@ function ProfileForm() {
       zipCode: form.zipCode || undefined,
       linkedinUrl: form.linkedinUrl || undefined,
       desiredRole: form.desiredRole || undefined,
-      minSalary: form.minSalary ? Number(form.minSalary) : undefined,
     })
+  }
+
+  async function handleSaveMinSalary(e: React.FormEvent) {
+    e.preventDefault()
+    await updateProfile.mutateAsync({
+      minSalary: minSalary ? Number(minSalary) : undefined,
+    })
+    toast.show('Filtros salvos')
+  }
+
+  async function handleNotifToggle(key: keyof typeof notifPrefs, value: boolean) {
+    const updated = { ...notifPrefs, [key]: value }
+    setNotifPrefs(updated)
+    await updateNotificationPrefs.mutateAsync(updated)
   }
 
   async function handleAddSkill() {
@@ -104,6 +179,13 @@ function ProfileForm() {
     if (!name) return
     await addSkill.mutateAsync({ name })
     setSkillInput('')
+  }
+
+  async function handleAddCompany() {
+    const company = companyInput.trim()
+    if (!company) return
+    await addExcludeCompany.mutateAsync({ company })
+    setCompanyInput('')
   }
 
   async function handleCvUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -137,6 +219,7 @@ function ProfileForm() {
   }
 
   const skills = profile?.skills ?? []
+  const excludeCompanies = profile?.excludeCompanies ?? []
 
   return (
     <>
@@ -150,7 +233,7 @@ function ProfileForm() {
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Dados pessoais</h2>
           {isLoading ? (
             <div className="space-y-3">
-              {Array.from({ length: 6 }).map((_, i) => (
+              {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="h-10 w-full" />
               ))}
             </div>
@@ -163,7 +246,6 @@ function ProfileForm() {
                   { label: 'CEP', name: 'zipCode', type: 'text', placeholder: '00000-000' },
                   { label: 'LinkedIn URL', name: 'linkedinUrl', type: 'url', placeholder: 'https://linkedin.com/in/...' },
                   { label: 'Cargo desejado', name: 'desiredRole', type: 'text', placeholder: 'Ex: Desenvolvedor Full Stack' },
-                  { label: 'Salário mínimo (R$)', name: 'minSalary', type: 'number', placeholder: '5000' },
                 ] as const
               ).map((field) => (
                 <div key={field.name}>
@@ -285,6 +367,125 @@ function ProfileForm() {
                   {cvUploading ? 'Enviando...' : profile?.cvUrl ? 'Substituir CV' : 'Enviar CV'}
                 </label>
                 <p className="text-xs text-gray-400 mt-1">PDF, máximo 5MB</p>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ── Notificações ───────────────────────────────────────────────── */}
+        <section>
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">Notificações</h2>
+          {isLoading ? (
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-8 w-full" />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <Toggle
+                checked={notifPrefs.emailDigest}
+                onChange={(v) => handleNotifToggle('emailDigest', v)}
+                label="Resumo diário"
+              />
+              <Toggle
+                checked={notifPrefs.emailOnViewed}
+                onChange={(v) => handleNotifToggle('emailOnViewed', v)}
+                label="Alerta quando vaga me visualizar"
+              />
+              <Toggle
+                checked={notifPrefs.emailOnFailed}
+                onChange={(v) => handleNotifToggle('emailOnFailed', v)}
+                label="Alerta quando candidatura falhar"
+              />
+            </div>
+          )}
+        </section>
+
+        {/* ── Filtros ─────────────────────────────────────────────────────── */}
+        <section>
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">Filtros</h2>
+          {isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-full" />
+              <div className="flex gap-2 flex-wrap">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-8 w-24" />
+                ))}
+              </div>
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Salário mínimo */}
+              <form onSubmit={handleSaveMinSalary} className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Salário mínimo (R$)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={minSalary}
+                    onChange={(e) => setMinSalary(e.target.value)}
+                    placeholder="5000"
+                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                  />
+                  <button
+                    type="submit"
+                    disabled={updateProfile.isPending}
+                    className="bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 disabled:opacity-50"
+                  >
+                    Salvar
+                  </button>
+                </div>
+              </form>
+
+              {/* Empresas para excluir */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Empresas para excluir
+                </label>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {excludeCompanies.map((company) => (
+                    <span
+                      key={company}
+                      className="inline-flex items-center gap-1 bg-red-50 text-red-700 border border-red-200 text-sm px-3 py-1 rounded-full"
+                    >
+                      {company}
+                      <button
+                        type="button"
+                        onClick={() => removeExcludeCompany.mutate({ company })}
+                        className="text-red-400 hover:text-red-700 leading-none"
+                        aria-label={`Remover ${company}`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  {excludeCompanies.length === 0 && (
+                    <p className="text-sm text-gray-400">Nenhuma empresa excluída.</p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={companyInput}
+                    onChange={(e) => setCompanyInput(e.target.value)}
+                    onKeyDown={(e) =>
+                      e.key === 'Enter' && (e.preventDefault(), handleAddCompany())
+                    }
+                    placeholder="Ex: Empresa XYZ"
+                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCompany}
+                    disabled={addExcludeCompany.isPending || !companyInput.trim()}
+                    className="bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 disabled:opacity-50"
+                  >
+                    Excluir
+                  </button>
+                </div>
               </div>
             </div>
           )}
