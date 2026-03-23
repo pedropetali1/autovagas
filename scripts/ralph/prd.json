@@ -45,8 +45,8 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Created Prisma client singleton at lib/prisma.ts. Created POST /api/webhooks/clerk route handler with Svix signature verification. Handles user.created (upsert) and user.updated (update) events. Returns 200/400/500 as required."
     },
     {
       "id": "US-004",

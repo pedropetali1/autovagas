@@ -42,3 +42,19 @@ Started: Mon Mar 23 11:54:39 PDT 2026
   - Schema-engine @@index regex is greedy and only captures the LAST @@index per model — manually add missing indexes to migration SQL after running prisma migrate dev
   - After schema changes, run `npx prisma generate` to regenerate the Prisma client (types won't update otherwise)
 ---
+
+## 2026-03-23 - US-003
+- Created Prisma client singleton at `autovagas/lib/prisma.ts` (global cache pattern for dev hot reload)
+- Created route handler `autovagas/app/api/webhooks/clerk/route.ts` — POST /api/webhooks/clerk
+- Validates Svix signature using svix npm package + CLERK_WEBHOOK_SECRET env var
+- On user.created: upserts User with clerkId, email, name from payload
+- On user.updated: updates email and name in User record
+- Returns 200 on success, 400 on invalid/missing signature, 500 on DB error
+- Installed svix npm package
+- Files changed: autovagas/lib/prisma.ts, autovagas/app/api/webhooks/clerk/route.ts, autovagas/package.json, autovagas/package-lock.json
+- **Learnings for future iterations:**
+  - Prisma client singleton goes in `lib/prisma.ts`; use `globalThis` cast for dev hot-reload safety
+  - `.env` is gitignored — add new env vars there locally but do NOT commit
+  - Next.js App Router route handlers: `export async function POST(request: Request)` in `app/.../route.ts`
+  - Svix headers are `svix-id`, `svix-timestamp`, `svix-signature` (lowercase)
+---
