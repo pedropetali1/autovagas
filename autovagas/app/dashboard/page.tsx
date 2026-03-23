@@ -1,7 +1,27 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { trpc } from '@/lib/trpc'
+
+// ─── Toast ───────────────────────────────────────────────────────────────────
+function useToast() {
+  const [message, setMessage] = useState<string | null>(null)
+  const show = (msg: string) => {
+    setMessage(msg)
+    setTimeout(() => setMessage(null), 4000)
+  }
+  return { message, show }
+}
+
+function Toast({ message }: { message: string | null }) {
+  if (!message) return null
+  return (
+    <div className="fixed bottom-6 right-6 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg text-sm z-50">
+      {message}
+    </div>
+  )
+}
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 function Skeleton({ className }: { className?: string }) {
@@ -213,6 +233,19 @@ export default function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = trpc.application.getStats.useQuery()
   const paused = profile?.automationPaused ?? false
 
+  const { message: toastMessage, show: showToast } = useToast()
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (searchParams.get('checkout') === 'success') {
+      showToast('Plano atualizado com sucesso')
+      // Remove query param without full page reload
+      router.replace('/dashboard')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const total = stats?.total ?? 0
   const sent = stats?.sent ?? 0
   const failed = stats?.failed ?? 0
@@ -264,6 +297,7 @@ export default function DashboardPage() {
         {/* Timeline */}
         <Timeline />
       </div>
+      <Toast message={toastMessage} />
     </main>
   )
 }
