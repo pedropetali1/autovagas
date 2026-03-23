@@ -130,8 +130,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 8,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Created lib/trpc.tsx with createTRPCReact<AppRouter>(). Created app/providers.tsx with ClerkProvider + QueryClientProvider + tRPC.Provider (httpBatchLink + superjson). Updated app/layout.tsx to wrap children with Providers. Created app/perfil/page.tsx: profile form (name, phone, zipCode, linkedinUrl, desiredRole, minSalary) saved via user.updateProfile with toast 'Perfil salvo'; skills section with removable tags + add input via user.addSkill/removeSkill; <3 skills warning; CV upload section (PDF only, max 5MB) via getUploadUrl → PUT → confirmCvUpload. Skeleton loaders while data loads. Typecheck passes."
     },
     {
       "id": "US-009",

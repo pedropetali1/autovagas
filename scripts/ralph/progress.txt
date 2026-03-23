@@ -3,6 +3,8 @@
 - tRPC v11 + Next.js App Router: use `fetchRequestHandler` from `@trpc/server/adapters/fetch` in `app/api/trpc/[trpc]/route.ts`
 - Clerk v7 auth in tRPC context: `const { userId: clerkId } = await auth()` from `@clerk/nextjs/server`
 - tRPC protectedProcedure loads full user from Prisma and adds to ctx; access as `ctx.user` in procedure handlers
+- tRPC frontend client: `createTRPCReact<AppRouter>()` in `lib/trpc.tsx`; Provider setup in `app/providers.tsx` with `httpBatchLink({ url: '/api/trpc', transformer: superjson })` + `ClerkProvider` + `QueryClientProvider`
+- Sync server state to controlled form: use a `synced` boolean flag to copy query data into local state once on load, avoiding re-initialization on every render
 - Prisma 7 has breaking changes: no `url` in datasource block; URL goes in `prisma.config.ts`
 - `binaries.prisma.sh` (Prisma CDN) is unreachable in this environment; use custom schema engine
 - Custom schema engine (`scripts/schema-engine.mjs`) handles all Prisma RPC + CLI calls
@@ -120,4 +122,22 @@ Started: Mon Mar 23 11:54:39 PDT 2026
   - Pass `{ upsert: true }` to `createSignedUploadUrl` so re-uploading the same path overwrites the file
   - The bucket 'cvs' RLS policy is a Supabase dashboard config, not code: `(auth.uid()::text = storage.foldername(name)[1])` restricts direct client access to the file owner's folder
   - Server-side operations use service role key so they bypass RLS by design
+---
+
+## 2026-03-23 - US-008
+- Created `lib/trpc.tsx`: tRPC React client with `createTRPCReact<AppRouter>()`
+- Created `app/providers.tsx`: ClerkProvider + QueryClientProvider + trpc.Provider using httpBatchLink + superjson
+- Updated `app/layout.tsx`: wrap children with `<Providers>`; updated metadata to AutoVagas / pt-BR
+- Created `app/perfil/page.tsx`: full profile page
+  - Personal data form: name, phone, zipCode, linkedinUrl, desiredRole, minSalary; saves via user.updateProfile; toast 'Perfil salvo'
+  - Skills section: removable tag chips + add-skill input; warning banner when <3 skills
+  - CV upload: file input (PDF only, max 5MB); getUploadUrl → PUT to signedUrl → confirmCvUpload; shows current cv.pdf link
+  - Skeleton loaders for all sections while query loading
+- Typecheck passes
+- Files changed: lib/trpc.tsx, app/providers.tsx, app/layout.tsx, app/perfil/page.tsx
+- **Learnings for future iterations:**
+  - tRPC React client setup: `createTRPCReact<AppRouter>()` in lib/trpc.tsx; provider in app/providers.tsx
+  - ClerkProvider must wrap tRPC provider (and vice versa) — nest as `<ClerkProvider><trpc.Provider><QueryClientProvider>`
+  - For CV upload: GET signedUrl from tRPC, then PUT file directly to Supabase Storage signedUrl
+  - Use a `synced` boolean flag to sync server data into controlled form state once on load
 ---
