@@ -204,3 +204,18 @@ Started: Mon Mar 23 11:54:39 PDT 2026
   - Vertical timeline with connecting lines: flex-col items, w-px flex-1 bg-gray-200 connector between items (skip on last)
   - appliedAt comes from application.list query since it uses include (returns all columns), not select
 ---
+
+## 2026-03-23 - US-013
+- Created `autovagas/app/planos/page.tsx`: 3 plan cards (Free/Plus/Pro) sourced from billing.getPlans
+- billing.getSubscription used to highlight current plan with 'Seu plano' badge
+- Plus/Pro 'Assinar' button calls billing.createCheckoutSession mutation and router.push(url) to Stripe Checkout
+- Free and current plan cards show disabled 'Plano atual' button
+- Updated `autovagas/app/dashboard/page.tsx`: added useSearchParams + useEffect to detect ?checkout=success query param on Stripe redirect success; shows toast 'Plano atualizado com sucesso' then clears param via router.replace('/dashboard')
+- Downgraded users see quota reflected on next load (handled by existing Stripe webhook + billing.getSubscription query)
+- Files changed: autovagas/app/planos/page.tsx (created), autovagas/app/dashboard/page.tsx
+- **Learnings for future iterations:**
+  - Stripe success redirect pattern: detect `?checkout=success` query param in useEffect on mount; show toast then router.replace to clean URL
+  - useSearchParams() from 'next/navigation' works in 'use client' components to read query params
+  - For plan card UI: grid-cols-3 with Pro card using dark (gray-900) background for visual hierarchy
+  - Disable 'Assinar' button while mutation is pending using `createCheckoutSession.isPending`
+---

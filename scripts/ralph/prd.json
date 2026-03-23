@@ -215,8 +215,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 13,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Created app/planos/page.tsx: 3 plan cards from billing.getPlans with billing.getSubscription to highlight current plan with 'Seu plano' badge. Plus/Pro cards have 'Assinar' button that calls billing.createCheckoutSession and redirects to Stripe Checkout URL. Free and current plan cards show disabled 'Plano atual' button. Updated app/dashboard/page.tsx: added useSearchParams to detect ?checkout=success on redirect from Stripe, shows toast 'Plano atualizado com sucesso' and clears the param via router.replace. Downgraded users see updated quota on next page load (handled by existing Stripe webhook). Typecheck passes."
     },
     {
       "id": "US-014",
