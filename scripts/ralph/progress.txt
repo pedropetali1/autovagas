@@ -13,6 +13,8 @@
 - PRISMA_SCHEMA_ENGINE_BINARY env var only affects CLI mode; daemon uses the binary from node_modules/@prisma/engines
 - Schema-engine `@@index` regex is greedy — only captures LAST `@@index` per model; manually add missing indexes to migration SQL after generation
 - Schema engine generates full CREATE TABLE/INDEX for all models each migration (not delta); `applyMigrations` ignores DDL errors on re-run
+- Prisma: never mix `include` and `select` at the same query level — use only `select` with nested `select` for relations
+- Cursor pagination: `take: limit + 1`, then `items.pop()` to get nextCursor; skip: 1 when cursor provided
 
 # Ralph Progress Log
 Started: Mon Mar 23 11:54:39 PDT 2026
@@ -75,4 +77,19 @@ Started: Mon Mar 23 11:54:39 PDT 2026
   - Clerk v7 `auth()` is async in server contexts; returns `{ userId }` (clerkId)
   - Prisma `excludeCompanies` array: use `{ push: value }` to append, `{ set: filteredArray }` to remove
   - `@clerk/nextjs/server` exports: `auth` (App Router), `currentUser`, `clerkMiddleware`
+---
+
+## 2026-03-23 - US-005
+- Created `server/routers/application.ts` with 4 procedures
+- `application.list`: cursor-based pagination (limit+1 pattern), optional ApplicationStatus filter, includes Job (title, company, location, salary, applyType), ordered by createdAt desc
+- `application.getStats`: parallel Promise.all with aggregate (_count.id, _avg.matchScore) + 3 separate count queries for sent/failed/viewed
+- `application.getTimeline`: last 10 applications with select (id, status, matchScore, appliedAt, job.title, job.company)
+- `application.getLogs`: verifies ownership via userId check, returns ApplicationLog ordered by createdAt asc; throws NOT_FOUND or FORBIDDEN
+- Registered applicationRouter in `server/routers/_app.ts`
+- Typecheck passes
+- Files changed: server/routers/application.ts, server/routers/_app.ts
+- **Learnings for future iterations:**
+  - Prisma: do NOT use both `include` and `select` at the same level — use only `select` with nested `select` for relations
+  - Cursor pagination pattern: `take: limit + 1`, pop last item for nextCursor
+  - Ownership verification pattern: `findUnique` with `select: { userId: true }`, compare with `ctx.user.id`
 ---

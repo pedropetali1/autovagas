@@ -80,8 +80,8 @@
         "Typecheck passes"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Created server/routers/application.ts with 4 procedures: list (cursor pagination + optional status filter, nested Job data), getStats (parallel aggregate/count queries), getTimeline (last 10 with Job.title/company via select), getLogs (ownership verification + ordered asc). Registered applicationRouter in _app.ts. Typecheck passes."
     },
     {
       "id": "US-006",
