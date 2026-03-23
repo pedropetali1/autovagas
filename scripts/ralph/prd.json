@@ -30,8 +30,8 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Replaced placeholder Application model with full definition; added ApplicationLog model. Missing indexes from schema-engine regex bug were manually added to migration SQL."
     },
     {
       "id": "US-003",

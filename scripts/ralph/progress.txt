@@ -8,6 +8,8 @@
 - `createMigration` response uses `extension: 'sql'` (no leading dot) — WIe writes `migration.${extension}`
 - `applyMigrations` response key is `appliedMigrationNames` (camelCase)
 - PRISMA_SCHEMA_ENGINE_BINARY env var only affects CLI mode; daemon uses the binary from node_modules/@prisma/engines
+- Schema-engine `@@index` regex is greedy — only captures LAST `@@index` per model; manually add missing indexes to migration SQL after generation
+- Schema engine generates full CREATE TABLE/INDEX for all models each migration (not delta); `applyMigrations` ignores DDL errors on re-run
 
 # Ralph Progress Log
 Started: Mon Mar 23 11:54:39 PDT 2026
@@ -27,4 +29,16 @@ Started: Mon Mar 23 11:54:39 PDT 2026
   - `@@index` is NOT in DMMF; parse from schema text with regex instead
   - `global.PRISMA_WASM_PANIC_REGISTRY = { set_message: () => {} }` required before requiring prisma-schema-wasm CJS module
   - `excludeCompanies String[] @default([])` field: DMMF default is `[]` (array), generate `DEFAULT ARRAY[]::TEXT[]`
+---
+
+## 2026-03-23 - US-002
+- Replaced placeholder Application model with full definition: matchScore, appliedAt, errorLog, failReason, directUrl, createdAt, updatedAt, logs relation
+- Added @@unique([userId, jobId]), @@index([userId, status]), @@index([createdAt])
+- Added ApplicationLog model: applicationId, action, detail (Json), screenshotUrl, createdAt; cascade delete from Application
+- Added @@index([applicationId]), @@index([createdAt]) to ApplicationLog
+- `prisma migrate dev` succeeded; Prisma client regenerated; typecheck passes
+- Files changed: prisma/schema.prisma, prisma/migrations/20260323125833_migration/migration.sql
+- **Learnings for future iterations:**
+  - Schema-engine @@index regex is greedy and only captures the LAST @@index per model — manually add missing indexes to migration SQL after running prisma migrate dev
+  - After schema changes, run `npx prisma generate` to regenerate the Prisma client (types won't update otherwise)
 ---
