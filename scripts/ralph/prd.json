@@ -181,8 +181,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 11,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Created app/vagas/page.tsx: paginated list via trpc.application.list.useInfiniteQuery (20/page, cursor-based), status filter dropdown (Todas/Pendente/Candidatando/Enviada/Falhou/Visualizada), ApplicationCard with job title/company/location/salary, ApplyTypeBadge (Easy Apply=blue, Externo=gray), StatusBadge, MatchScoreBar (green≥70%, amber 40-69%, red<40%), 'Candidatar manualmente' link for FAILED+FORM_NOT_SUPPORTED, automation paused yellow banner, skeleton loaders, 'Carregar mais' load-more button. Typecheck passes."
     },
     {
       "id": "US-012",

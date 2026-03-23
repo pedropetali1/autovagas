@@ -171,3 +171,20 @@ Started: Mon Mar 23 11:54:39 PDT 2026
   - Status badge pattern: Record<string, string> maps for labels and Tailwind color classes
   - Intl.DateTimeFormat('pt-BR', { day, month, year, hour, minute }) for formatted Brazilian timestamps
 ---
+
+## 2026-03-23 - US-011
+- Created `autovagas/app/vagas/page.tsx` with full vagas listing page
+- Paginated list via `trpc.application.list.useInfiniteQuery` (limit=20, cursor-based); "Carregar mais" load-more button when `hasNextPage`
+- Status filter dropdown: Todas / Pendente / Candidatando / Enviada / Falhou / Visualizada (maps empty string → undefined for tRPC)
+- ApplicationCard: job title, company, location, salary (Intl.NumberFormat BRL), ApplyTypeBadge (EASY_APPLY=blue, EXTERNAL=gray), StatusBadge, MatchScoreBar
+- MatchScoreBar: color-coded fill bar + percentage (green≥70%, amber 40-69%, red<40%)
+- 'Candidatar manualmente' link (opens in new tab) only when status=FAILED AND failReason=FORM_NOT_SUPPORTED AND directUrl present
+- Automation paused yellow banner at top when profile.automationPaused=true
+- Skeleton loaders while isLoading
+- Files changed: autovagas/app/vagas/page.tsx
+- **Learnings for future iterations:**
+  - `trpc.application.list.useInfiniteQuery` takes input WITHOUT cursor field; tRPC passes cursor automatically as pageParam
+  - `data?.pages.flatMap(p => p.items)` to flatten infinite query pages into a single array
+  - `hasNextPage` and `fetchNextPage` / `isFetchingNextPage` are destructured from useInfiniteQuery result
+  - For conditional enum filter: use `(statusFilter as string) || undefined` to convert empty string to undefined for optional tRPC input
+---
