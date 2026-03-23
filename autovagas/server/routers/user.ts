@@ -1,5 +1,7 @@
 import { z } from 'zod'
+import { TRPCError } from '@trpc/server'
 import { createTRPCRouter, protectedProcedure } from '@/server/trpc'
+import { supabase } from '@/lib/supabase'
 
 export const userRouter = createTRPCRouter({
   getProfile: protectedProcedure.query(async ({ ctx }) => {
@@ -92,4 +94,25 @@ export const userRouter = createTRPCRouter({
       })
       return updated.excludeCompanies
     }),
+
+  getUploadUrl: protectedProcedure.mutation(async ({ ctx }) => {
+    const path = `${ctx.user.id}/cv.pdf`
+    const { data, error } = await supabase.storage
+      .from('cvs')
+      .createSignedUploadUrl(path, { upsert: true })
+    if (error) {
+      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: error.message })
+    }
+    return { signedUrl: data.signedUrl, token: data.token, path: data.path }
+  }),
+
+  confirmCvUpload: protectedProcedure.mutation(async ({ ctx }) => {
+    const path = `${ctx.user.id}/cv.pdf`
+    const { data } = supabase.storage.from('cvs').getPublicUrl(path)
+    const updated = await ctx.prisma.user.update({
+      where: { id: ctx.user.id },
+      data: { cvUrl: data.publicUrl },
+    })
+    return { cvUrl: updated.cvUrl }
+  }),
 })
