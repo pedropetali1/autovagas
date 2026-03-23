@@ -1,65 +1,299 @@
-import Image from "next/image";
+import { Playfair_Display, DM_Sans } from 'next/font/google'
+import Link from 'next/link'
 
-export default function Home() {
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--font-playfair',
+})
+
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  variable: '--font-dm-sans',
+})
+
+// ─── Static plan data (mirrors billing router PLANS) ──────────────────────────
+const PLANS = [
+  {
+    id: 'FREE',
+    name: 'Free',
+    price: 0,
+    dailyQuota: 1,
+    features: ['1 candidatura/dia', 'Dashboard básico', 'Notificações por e-mail'],
+  },
+  {
+    id: 'PLUS',
+    name: 'Plus',
+    price: 29,
+    dailyQuota: 10,
+    features: ['10 candidaturas/dia', 'Dashboard completo', 'Notificações por e-mail', 'Suporte prioritário'],
+  },
+  {
+    id: 'PRO',
+    name: 'Pro',
+    price: 59,
+    dailyQuota: 20,
+    features: ['20 candidaturas/dia', 'Dashboard completo', 'Notificações por e-mail', 'Suporte prioritário', 'Análise avançada de compatibilidade'],
+  },
+]
+
+const STATS = [
+  { label: 'candidaturas enviadas', value: '10.000+' },
+  { label: 'vagas analisadas por dia', value: '50.000+' },
+  { label: 'usuários ativos', value: '2.500+' },
+]
+
+const STEPS = [
+  {
+    number: '01',
+    title: 'Busca vagas',
+    description: 'Rastreamos o LinkedIn anonimamente usando Playwright com proxies rotativos para encontrar as melhores vagas para o seu perfil.',
+    icon: (
+      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+      </svg>
+    ),
+  },
+  {
+    number: '02',
+    title: 'Analisa compatibilidade',
+    description: 'Calculamos um score de compatibilidade entre suas skills e os requisitos da vaga, filtrando apenas as oportunidades mais relevantes.',
+    icon: (
+      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+      </svg>
+    ),
+  },
+  {
+    number: '03',
+    title: 'Candidata automaticamente',
+    description: 'Preenchemos formulários e submetemos candidaturas — Easy Apply e externos — enquanto você foca no que importa.',
+    icon: (
+      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+      </svg>
+    ),
+  },
+]
+
+// ─── Static Plan Card (no interactivity — links to /planos for signup) ────────
+function StaticPlanCard({ plan }: { plan: typeof PLANS[number] }) {
+  const isFree = plan.id === 'FREE'
+  const isPro = plan.id === 'PRO'
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div
+      className={`relative flex flex-col rounded-2xl border p-8 ${
+        isPro ? 'bg-gray-900 text-white border-gray-900' : 'bg-white border-[#e8e7e0]'
+      }`}
+    >
+      <div className="mb-6">
+        <h3 className={`text-xl font-semibold mb-1 ${isPro ? 'text-white' : 'text-gray-900'}`}>
+          {plan.name}
+        </h3>
+        <div className="flex items-baseline gap-1">
+          {isFree ? (
+            <span className={`text-4xl font-bold ${isPro ? 'text-white' : 'text-gray-900'}`}>Grátis</span>
+          ) : (
+            <>
+              <span className={`text-4xl font-bold ${isPro ? 'text-white' : 'text-gray-900'}`}>
+                R${plan.price}
+              </span>
+              <span className={`text-sm ${isPro ? 'text-gray-400' : 'text-gray-500'}`}>/mês</span>
+            </>
+          )}
+        </div>
+        <p className={`text-sm mt-1 ${isPro ? 'text-gray-400' : 'text-gray-500'}`}>
+          {plan.dailyQuota} {plan.dailyQuota === 1 ? 'vaga' : 'vagas'}/dia
+        </p>
+      </div>
+
+      <ul className="space-y-3 flex-1 mb-8">
+        {plan.features.map((feature) => (
+          <li key={feature} className="flex items-center gap-2 text-sm">
+            <svg
+              className={`w-4 h-4 flex-shrink-0 ${isPro ? 'text-white' : 'text-gray-900'}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            <span className={isPro ? 'text-gray-300' : 'text-gray-600'}>{feature}</span>
+          </li>
+        ))}
+      </ul>
+
+      <Link
+        href="/sign-up"
+        className={`w-full py-2.5 rounded-xl text-sm font-medium text-center transition-colors block ${
+          isPro
+            ? 'bg-white text-gray-900 hover:bg-gray-100'
+            : 'bg-gray-900 text-white hover:bg-gray-800'
+        }`}
+      >
+        Começar grátis
+      </Link>
+    </div>
+  )
+}
+
+// ─── Landing Page (SSG) ───────────────────────────────────────────────────────
+export default function LandingPage() {
+  return (
+    <div
+      className={`${playfair.variable} ${dmSans.variable} min-h-screen`}
+      style={{ background: '#fafaf8', fontFamily: 'var(--font-dm-sans), DM Sans, sans-serif' }}
+    >
+      {/* Nav */}
+      <nav
+        className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto"
+        style={{ borderBottom: '1px solid #e8e7e0' }}
+      >
+        <span className="text-xl font-bold text-gray-900">AutoVagas</span>
+        <div className="flex items-center gap-4">
+          <Link href="/sign-in" className="text-sm text-gray-600 hover:text-gray-900">
+            Entrar
+          </Link>
+          <Link
+            href="/sign-up"
+            className="text-sm bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+          >
+            Começar grátis
+          </Link>
+        </div>
+      </nav>
+
+      {/* Hero */}
+      <section className="max-w-6xl mx-auto px-6 py-24 text-center">
+        <h1
+          className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight"
+          style={{ fontFamily: 'var(--font-playfair), Playfair Display, serif' }}
+        >
+          Candidate-se a vagas no LinkedIn
+          <br />
+          <span className="text-gray-500">enquanto você dorme.</span>
+        </h1>
+        <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+          AutoVagas automatiza suas candidaturas com IA — analisa compatibilidade, preenche formulários e envia aplicações. Você só aparece para as entrevistas.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Link
+            href="/sign-up"
+            className="bg-gray-900 text-white px-8 py-4 rounded-xl text-base font-medium hover:bg-gray-800 transition-colors"
+          >
+            Começar grátis
+          </Link>
+          <Link
+            href="#como-funciona"
+            className="border text-gray-700 px-8 py-4 rounded-xl text-base font-medium hover:bg-gray-100 transition-colors"
+            style={{ borderColor: '#e8e7e0' }}
+          >
+            Como funciona
+          </Link>
+        </div>
+      </section>
+
+      {/* Stats */}
+      <section className="border-y py-12" style={{ borderColor: '#e8e7e0', background: '#fff' }}>
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            {STATS.map((stat) => (
+              <div key={stat.label}>
+                <p
+                  className="text-4xl font-bold text-gray-900 mb-2"
+                  style={{ fontFamily: 'var(--font-playfair), Playfair Display, serif' }}
+                >
+                  {stat.value}
+                </p>
+                <p className="text-gray-500 text-sm">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Como funciona */}
+      <section id="como-funciona" className="max-w-6xl mx-auto px-6 py-24">
+        <div className="text-center mb-16">
+          <h2
+            className="text-3xl md:text-4xl font-bold text-gray-900 mb-4"
+            style={{ fontFamily: 'var(--font-playfair), Playfair Display, serif' }}
+          >
+            Como funciona
+          </h2>
+          <p className="text-gray-500 max-w-xl mx-auto">
+            Em 3 passos automatizados, o AutoVagas trabalha por você todos os dias às 8h da manhã.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {STEPS.map((step) => (
+            <div
+              key={step.number}
+              className="bg-white rounded-2xl p-8"
+              style={{ border: '1px solid #e8e7e0' }}
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <span className="text-xs font-mono font-bold text-gray-400">{step.number}</span>
+                <div className="text-gray-700">{step.icon}</div>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">{step.title}</h3>
+              <p className="text-sm text-gray-500 leading-relaxed">{step.description}</p>
+            </div>
+          ))}
         </div>
-      </main>
+      </section>
+
+      {/* Pricing */}
+      <section className="py-24" style={{ background: '#fafaf8' }}>
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2
+              className="text-3xl md:text-4xl font-bold text-gray-900 mb-4"
+              style={{ fontFamily: 'var(--font-playfair), Playfair Display, serif' }}
+            >
+              Planos simples e transparentes
+            </h2>
+            <p className="text-gray-500">Comece grátis e escale conforme sua busca por emprego.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {PLANS.map((plan) => (
+              <StaticPlanCard key={plan.id} plan={plan} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="py-24 text-center" style={{ borderTop: '1px solid #e8e7e0', background: '#fff' }}>
+        <div className="max-w-2xl mx-auto px-6">
+          <h2
+            className="text-3xl md:text-4xl font-bold text-gray-900 mb-6"
+            style={{ fontFamily: 'var(--font-playfair), Playfair Display, serif' }}
+          >
+            Pronto para automatizar sua busca?
+          </h2>
+          <p className="text-gray-500 mb-10 text-lg">
+            Crie sua conta gratuita em menos de 2 minutos e comece a receber candidaturas hoje.
+          </p>
+          <Link
+            href="/sign-up"
+            className="inline-block bg-gray-900 text-white px-10 py-4 rounded-xl text-base font-medium hover:bg-gray-800 transition-colors"
+          >
+            Criar conta grátis
+          </Link>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer
+        className="py-8 text-center text-sm text-gray-400"
+        style={{ borderTop: '1px solid #e8e7e0' }}
+      >
+        <p>© 2026 AutoVagas. Todos os direitos reservados.</p>
+      </footer>
     </div>
-  );
+  )
 }
