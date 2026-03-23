@@ -154,3 +154,20 @@ Started: Mon Mar 23 11:54:39 PDT 2026
   - Notification prefs are saved immediately on toggle change (no save button needed) — optimistic UI via local state update first, then mutation
   - excludeCompanies array is managed server-side via push/set; client reflects via query invalidation
 ---
+
+## 2026-03-23 - US-010
+- Created `autovagas/app/dashboard/page.tsx` with full dashboard implementation
+- Greeting with user name (split on space for first name)
+- PlanCard: plan name (FREE/PLUS/PRO → labels), dailyQuota, todayCount from getStats
+- 4 MetricCards: total, sent, fail rate % (failed/total*100), avgScore%
+- AutomationToggle: optimistic local state toggle, amber track + badge when paused, amber banner in page header when paused
+- Timeline: application.getTimeline, StatusBadge per status, formatted timestamp via Intl.DateTimeFormat pt-BR
+- Extended `server/routers/application.ts` getStats to include todayCount (createdAt >= today 00:00 local time)
+- All sections use skeleton loaders while queries load
+- Files changed: autovagas/app/dashboard/page.tsx, autovagas/server/routers/application.ts
+- **Learnings for future iterations:**
+  - Optimistic UI for toggle: save `localPaused` state in useState, update on onMutate, sync on onSuccess/onError
+  - `new Date(); setHours(0,0,0,0)` gives start of today in local time — use for "today count" queries
+  - Status badge pattern: Record<string, string> maps for labels and Tailwind color classes
+  - Intl.DateTimeFormat('pt-BR', { day, month, year, hour, minute }) for formatted Brazilian timestamps
+---
