@@ -97,8 +97,8 @@
         "Typecheck passes"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Installed stripe@20.4.1. Created server/routers/billing.ts with 3 procedures: getPlans (static array of 3 plans), createCheckoutSession (Stripe Checkout Session with price ID from env), getSubscription (returns plan + dailyQuota). Registered billingRouter in _app.ts. Created app/api/webhooks/stripe/route.ts: validates Stripe signature, handles checkout.session.completed (update plan+dailyQuota from priceId→PLAN_CONFIG map), customer.subscription.deleted (reset to FREE/1). API version must be '2026-02-25.clover' for stripe@20.4.1. Typecheck passes."
     },
     {
       "id": "US-007",

@@ -15,6 +15,7 @@
 - Schema engine generates full CREATE TABLE/INDEX for all models each migration (not delta); `applyMigrations` ignores DDL errors on re-run
 - Prisma: never mix `include` and `select` at the same query level — use only `select` with nested `select` for relations
 - Cursor pagination: `take: limit + 1`, then `items.pop()` to get nextCursor; skip: 1 when cursor provided
+- Stripe SDK: use `apiVersion: '2026-02-25.clover'` for stripe@20.4.1 (latest as of 2026-03)
 
 # Ralph Progress Log
 Started: Mon Mar 23 11:54:39 PDT 2026
@@ -92,4 +93,17 @@ Started: Mon Mar 23 11:54:39 PDT 2026
   - Prisma: do NOT use both `include` and `select` at the same level — use only `select` with nested `select` for relations
   - Cursor pagination pattern: `take: limit + 1`, pop last item for nextCursor
   - Ownership verification pattern: `findUnique` with `select: { userId: true }`, compare with `ctx.user.id`
+---
+
+## 2026-03-23 - US-006
+- Installed stripe@20.4.1
+- Created `server/routers/billing.ts` with 3 procedures: getPlans (static 3-plan array), createCheckoutSession (Stripe Checkout Session), getSubscription (user plan + dailyQuota)
+- Created `app/api/webhooks/stripe/route.ts`: validates Stripe signature with STRIPE_WEBHOOK_SECRET, handles checkout.session.completed (updates plan/dailyQuota via priceId→PLAN_CONFIG map) and customer.subscription.deleted (resets to FREE/1)
+- Registered billingRouter in `server/routers/_app.ts`
+- Files changed: server/routers/billing.ts, server/routers/_app.ts, app/api/webhooks/stripe/route.ts, package.json, package-lock.json
+- **Learnings for future iterations:**
+  - Stripe API version for stripe@20.4.1 is `'2026-02-25.clover'` — do NOT use `'2025-01-27.acacia'` or older versions
+  - Stripe webhook handler: use `request.text()` (not `.json()`) before constructEvent() — body must be raw string
+  - Plan→priceId mapping comes from env vars (STRIPE_PRICE_PLUS, STRIPE_PRICE_PRO); PLAN_CONFIG maps priceId→{plan, dailyQuota}
+  - userId is stored in checkout session metadata at creation time; subscription.metadata?.userId for deletion events
 ---
