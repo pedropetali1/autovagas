@@ -86,11 +86,12 @@ function MatchScoreBar({ score }: { score: number }) {
   )
 }
 
-// ─── Application Card ─────────────────────────────────────────────────────────
+// ─── Application Item Type ─────────────────────────────────────────────────────
 type ApplicationItem = {
   id: string
   status: string
   matchScore: number
+  appliedAt: Date | null
   failReason: string | null
   directUrl: string | null
   job: {
@@ -102,12 +103,25 @@ type ApplicationItem = {
   }
 }
 
-function ApplicationCard({ item }: { item: ApplicationItem }) {
+// ─── Application Card ─────────────────────────────────────────────────────────
+function ApplicationCard({
+  item,
+  onClick,
+}: {
+  item: ApplicationItem
+  onClick: () => void
+}) {
   const showManualApply =
     item.status === 'FAILED' && item.failReason === 'FORM_NOT_SUPPORTED' && item.directUrl
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3 hover:border-gray-300 transition-colors">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => e.key === 'Enter' && onClick()}
+      className="bg-white border border-gray-200 rounded-xl p-5 space-y-3 hover:border-gray-300 hover:shadow-sm transition-all cursor-pointer"
+    >
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
@@ -142,11 +156,226 @@ function ApplicationCard({ item }: { item: ApplicationItem }) {
           href={item.directUrl!}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800 underline underline-offset-2"
         >
           Candidatar manualmente ↗
         </a>
       )}
+    </div>
+  )
+}
+
+// ─── Log action icons & labels ────────────────────────────────────────────────
+const ACTION_ICONS: Record<string, string> = {
+  SCRAPE: '🔍',
+  MATCH: '⚡',
+  FILL_FORM: '✏️',
+  SUBMIT: '📤',
+  SCREENSHOT: '📸',
+}
+
+const ACTION_LABELS: Record<string, string> = {
+  SCRAPE: 'Coleta',
+  MATCH: 'Matching',
+  FILL_FORM: 'Preenchimento',
+  SUBMIT: 'Envio',
+  SCREENSHOT: 'Captura de tela',
+}
+
+type LogEntry = {
+  id: string
+  action: string
+  detail: unknown
+  screenshotUrl: string | null
+  createdAt: Date
+}
+
+function formatDate(date: Date) {
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(date))
+}
+
+function DetailKeyValue({ detail }: { detail: unknown }) {
+  if (!detail || typeof detail !== 'object' || Array.isArray(detail)) return null
+  const entries = Object.entries(detail as Record<string, unknown>)
+  if (entries.length === 0) return null
+
+  return (
+    <dl className="mt-1 space-y-0.5">
+      {entries.map(([key, value]) => (
+        <div key={key} className="flex gap-2 text-xs">
+          <dt className="text-gray-400 shrink-0">{key}:</dt>
+          <dd className="text-gray-600 break-all">
+            {Array.isArray(value) ? value.join(', ') : String(value)}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+function LogTimeline({ applicationId }: { applicationId: string }) {
+  const { data: logs, isLoading } = trpc.application.getLogs.useQuery({ applicationId })
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="flex gap-3">
+            <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+            <div className="flex-1 space-y-2 pt-1">
+              <Skeleton className="h-4 w-1/3" />
+              <Skeleton className="h-3 w-2/3" />
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (!logs || logs.length === 0) {
+    return <p className="text-sm text-gray-400">Nenhum registro encontrado.</p>
+  }
+
+  return (
+    <ol className="relative space-y-0">
+      {(logs as LogEntry[]).map((log, idx) => (
+        <li key={log.id} className="flex gap-3">
+          {/* Timeline line + icon */}
+          <div className="flex flex-col items-center">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-base shrink-0 z-10">
+              {ACTION_ICONS[log.action] ?? '•'}
+            </div>
+            {idx < logs.length - 1 && (
+              <div className="w-px flex-1 bg-gray-200 my-1" />
+            )}
+          </div>
+
+          {/* Content */}
+          <div className={`flex-1 pb-4 ${idx === logs.length - 1 ? '' : ''}`}>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-sm font-medium text-gray-800">
+                {ACTION_LABELS[log.action] ?? log.action}
+              </span>
+              <span className="text-xs text-gray-400 tabular-nums shrink-0">
+                {formatDate(log.createdAt)}
+              </span>
+            </div>
+
+            <DetailKeyValue detail={log.detail} />
+
+            {/* Screenshot thumbnail */}
+            {log.action === 'SCREENSHOT' && log.screenshotUrl && (
+              <a
+                href={log.screenshotUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-block"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={log.screenshotUrl}
+                  alt="Screenshot"
+                  className="rounded-lg border border-gray-200 max-h-32 object-cover hover:opacity-80 transition-opacity"
+                />
+              </a>
+            )}
+          </div>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+// ─── Application Detail Modal ─────────────────────────────────────────────────
+function ApplicationDetailModal({
+  app,
+  onClose,
+}: {
+  app: ApplicationItem
+  onClose: () => void
+}) {
+  const showManualApply =
+    app.failReason === 'FORM_NOT_SUPPORTED' && app.directUrl
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Panel */}
+      <div className="relative bg-white w-full sm:max-w-lg sm:rounded-2xl shadow-2xl flex flex-col max-h-[92dvh] sm:max-h-[85dvh] overflow-hidden">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3 px-5 pt-5 pb-4 border-b border-gray-100">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-semibold text-gray-900 leading-tight">
+              {app.job.title}
+            </h2>
+            <p className="text-sm text-gray-500 mt-0.5">{app.job.company}</p>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Fechar"
+            className="shrink-0 text-gray-400 hover:text-gray-700 transition-colors text-xl leading-none"
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Meta */}
+        <div className="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-gray-100">
+          <StatusBadge status={app.status} />
+          <span className="text-xs text-gray-400">
+            {Math.round(app.matchScore)}% compatibilidade
+          </span>
+          {app.appliedAt && (
+            <span className="text-xs text-gray-400">
+              · Enviada em {formatDate(app.appliedAt)}
+            </span>
+          )}
+        </div>
+
+        {/* FORM_NOT_SUPPORTED notice */}
+        {showManualApply && (
+          <div className="px-5 py-3 bg-amber-50 border-b border-amber-100">
+            <p className="text-sm text-amber-800 font-medium">
+              Formulário externo não mapeado
+            </p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              A automação não conseguiu preencher este formulário automaticamente.
+            </p>
+            <a
+              href={app.directUrl!}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-amber-900 underline underline-offset-2 hover:text-amber-700"
+            >
+              Candidatar manualmente ↗
+            </a>
+          </div>
+        )}
+
+        {/* Log timeline */}
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
+            Histórico
+          </h3>
+          <LogTimeline applicationId={app.id} />
+        </div>
+      </div>
     </div>
   )
 }
@@ -166,6 +395,7 @@ type StatusFilterValue = (typeof STATUS_FILTER_OPTIONS)[number]['value']
 // ─── Vagas Page ───────────────────────────────────────────────────────────────
 export default function VagasPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>('')
+  const [selectedApp, setSelectedApp] = useState<ApplicationItem | null>(null)
 
   const { data: profile } = trpc.user.getProfile.useQuery()
   const automationPaused = profile?.automationPaused ?? false
@@ -238,25 +468,30 @@ export default function VagasPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {allItems.map((item) => (
-              <ApplicationCard
-                key={item.id}
-                item={{
-                  id: item.id,
-                  status: item.status,
-                  matchScore: item.matchScore,
-                  failReason: item.failReason ?? null,
-                  directUrl: item.directUrl ?? null,
-                  job: {
-                    title: item.job.title,
-                    company: item.job.company,
-                    location: item.job.location ?? null,
-                    salary: item.job.salary ?? null,
-                    applyType: item.job.applyType,
-                  },
-                }}
-              />
-            ))}
+            {allItems.map((item) => {
+              const appItem: ApplicationItem = {
+                id: item.id,
+                status: item.status,
+                matchScore: item.matchScore,
+                appliedAt: item.appliedAt ?? null,
+                failReason: item.failReason ?? null,
+                directUrl: item.directUrl ?? null,
+                job: {
+                  title: item.job.title,
+                  company: item.job.company,
+                  location: item.job.location ?? null,
+                  salary: item.job.salary ?? null,
+                  applyType: item.job.applyType,
+                },
+              }
+              return (
+                <ApplicationCard
+                  key={item.id}
+                  item={appItem}
+                  onClick={() => setSelectedApp(appItem)}
+                />
+              )
+            })}
 
             {hasNextPage && (
               <div className="flex justify-center pt-2">
@@ -272,6 +507,14 @@ export default function VagasPage() {
           </div>
         )}
       </div>
+
+      {/* Detail modal */}
+      {selectedApp && (
+        <ApplicationDetailModal
+          app={selectedApp}
+          onClose={() => setSelectedApp(null)}
+        />
+      )}
     </main>
   )
 }
