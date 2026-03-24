@@ -307,3 +307,19 @@ Started: Mon Mar 23 11:54:39 PDT 2026
   - Screenshot is taken after filling form but before submission (captures final filled state)
   - Always check for challenge redirects both before AND after submission
 ---
+
+## 2026-03-24 - US-018
+- Extended `autovagas/workers/apply.ts` with `applyExternal` function and `detectFields` helper
+- `detectFields` scans visible inputs and matches against FIELD_PATTERNS (name, email, phone, resume) via label text, name attr, id attr, placeholder, aria-label
+- Computes `mappingRatio = mappedRequired / totalRequired`; if < 0.70 → FORM_NOT_SUPPORTED with directUrl and SUBMIT log
+- If >= 0.70: fills detected fields (name/email/phone), uploads CV to file input via setInputFiles, takes screenshot, submits
+- On CAPTCHA or timeout: same handling as Easy Apply
+- Updated `runApply` to branch on `application.job.applyType`: EASY_APPLY → `applyEasyApply`, EXTERNAL → `applyExternal`
+- FORM_NOT_SUPPORTED stores `directUrl = job.linkedinUrl` on Application and logs `{ reason, mappedFields, totalRequired }`
+- Files changed: autovagas/workers/apply.ts
+- **Learnings for future iterations:**
+  - External form detection: scan all visible inputs (exclude hidden/submit/button/checkbox/radio), match via label[for=id], name, id, placeholder, aria-label haystack
+  - `context.waitForEvent('page')` captures new tab opened by external apply link; use `Promise.all` with click + waitForEvent
+  - FORM_NOT_SUPPORTED fallback: store `directUrl` on Application so dashboard can surface "Candidatar manualmente" button
+  - Prisma Json field detail: use plain object literal (not `Record<string, unknown>` variable) for type compatibility
+---

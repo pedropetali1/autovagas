@@ -312,8 +312,8 @@
         "Typecheck passes"
       ],
       "priority": 18,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Extended workers/apply.ts with applyExternal function and detectFields heuristic. detectFields scans all visible inputs and matches against FIELD_PATTERNS (name, email, phone, resume) via label text, name, id, placeholder, aria-label attributes. Computes mappingRatio = mappedRequired / totalRequired. If <0.70: FAILED with failReason=FORM_NOT_SUPPORTED, directUrl=job.linkedinUrl, SUBMIT log {reason, mappedFields, totalRequired}. If >=0.70: fills name/email/phone, uploads CV to file input, takes screenshot (Supabase Storage), submits form. On CAPTCHA: FAILED+CAPTCHA. On timeout: FAILED+TIMEOUT. On success: SENT+appliedAt. Updated runApply to branch on applyType (EASY_APPLY vs EXTERNAL). Typecheck passes."
     },
     {
       "id": "US-019",
