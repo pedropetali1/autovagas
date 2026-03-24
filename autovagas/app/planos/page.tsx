@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { trpc } from '@/lib/trpc'
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
@@ -31,6 +32,7 @@ function PlanCard({
   onSubscribe: (planId: 'PLUS' | 'PRO') => void
   loading: boolean
 }) {
+  const t = useTranslations('planos')
   const isFree = plan.id === 'FREE'
   const isPro = plan.id === 'PRO'
 
@@ -48,7 +50,7 @@ function PlanCard({
             isPro ? 'bg-white text-gray-900' : 'bg-gray-900 text-white'
           }`}
         >
-          Seu plano
+          {t('yourPlan')}
         </span>
       )}
 
@@ -59,19 +61,21 @@ function PlanCard({
         <div className="flex items-baseline gap-1">
           {isFree ? (
             <span className={`text-4xl font-bold ${isPro ? 'text-white' : 'text-gray-900'}`}>
-              Grátis
+              {t('free')}
             </span>
           ) : (
             <>
               <span className={`text-4xl font-bold ${isPro ? 'text-white' : 'text-gray-900'}`}>
                 R${plan.price}
               </span>
-              <span className={`text-sm ${isPro ? 'text-gray-400' : 'text-gray-500'}`}>/mês</span>
+              <span className={`text-sm ${isPro ? 'text-gray-400' : 'text-gray-500'}`}>
+                {t('perMonth')}
+              </span>
             </>
           )}
         </div>
         <p className={`text-sm mt-1 ${isPro ? 'text-gray-400' : 'text-gray-500'}`}>
-          {plan.dailyQuota} {plan.dailyQuota === 1 ? 'vaga' : 'vagas'}/dia
+          {t('quota', { count: plan.dailyQuota })}
         </p>
       </div>
 
@@ -98,7 +102,7 @@ function PlanCard({
           disabled
           className="w-full py-2.5 rounded-xl text-sm font-medium bg-gray-100 text-gray-400 cursor-not-allowed"
         >
-          Plano atual
+          {t('currentPlan')}
         </button>
       ) : isCurrent ? (
         <button
@@ -110,7 +114,7 @@ function PlanCard({
               : 'bg-gray-100 text-gray-400 cursor-not-allowed'
           }`}
         >
-          Plano atual
+          {t('currentPlan')}
         </button>
       ) : (
         <button
@@ -123,7 +127,7 @@ function PlanCard({
               : 'bg-gray-900 text-white hover:bg-gray-800'
           }`}
         >
-          {loading ? 'Aguarde…' : 'Assinar'}
+          {loading ? t('waiting') : t('subscribe')}
         </button>
       )}
     </div>
@@ -132,6 +136,7 @@ function PlanCard({
 
 // ─── Planos Page ──────────────────────────────────────────────────────────────
 export default function PlanosPage() {
+  const t = useTranslations('planos')
   const router = useRouter()
   const [subscribingPlan, setSubscribingPlan] = useState<string | null>(null)
 
@@ -161,10 +166,8 @@ export default function PlanosPage() {
     <main className="min-h-screen bg-[#fafaf8] p-6 md:p-10">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold text-gray-900 mb-3">Escolha seu plano</h1>
-          <p className="text-gray-500">
-            Aumente sua cota diária e candidate-se a mais vagas automaticamente.
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-3">{t('title')}</h1>
+          <p className="text-gray-500">{t('subtitle')}</p>
         </div>
 
         {isLoading ? (

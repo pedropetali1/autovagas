@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { trpc } from '@/lib/trpc'
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
@@ -31,14 +32,6 @@ function Skeleton({ className }: { className?: string }) {
 }
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
-const STATUS_LABELS: Record<string, string> = {
-  PENDING: 'Pendente',
-  APPLYING: 'Candidatando',
-  SENT: 'Enviada',
-  FAILED: 'Falhou',
-  VIEWED: 'Visualizada',
-}
-
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-gray-100 text-gray-700',
   APPLYING: 'bg-blue-100 text-blue-700',
@@ -48,13 +41,21 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const t = useTranslations('status')
+  const labels: Record<string, string> = {
+    PENDING: t('PENDING'),
+    APPLYING: t('APPLYING'),
+    SENT: t('SENT'),
+    FAILED: t('FAILED'),
+    VIEWED: t('VIEWED'),
+  }
   return (
     <span
       className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
         STATUS_COLORS[status] ?? 'bg-gray-100 text-gray-700'
       }`}
     >
-      {STATUS_LABELS[status] ?? status}
+      {labels[status] ?? status}
     </span>
   )
 }
@@ -83,6 +84,7 @@ function MetricCard({
 
 // ─── Plan Card ────────────────────────────────────────────────────────────────
 function PlanCard() {
+  const t = useTranslations('dashboard')
   const { data: profile, isLoading: profileLoading } = trpc.user.getProfile.useQuery()
   const { data: stats, isLoading: statsLoading } = trpc.application.getStats.useQuery()
 
@@ -92,7 +94,7 @@ function PlanCard() {
   return (
     <div className="bg-gray-900 text-white rounded-xl p-5 flex items-center justify-between">
       <div>
-        <p className="text-sm text-gray-400 mb-1">Plano atual</p>
+        <p className="text-sm text-gray-400 mb-1">{t('plan.current')}</p>
         {loading ? (
           <Skeleton className="h-7 w-16 bg-gray-700" />
         ) : (
@@ -100,19 +102,23 @@ function PlanCard() {
         )}
       </div>
       <div className="text-center">
-        <p className="text-sm text-gray-400 mb-1">Cota diária</p>
+        <p className="text-sm text-gray-400 mb-1">{t('plan.dailyQuota')}</p>
         {loading ? (
           <Skeleton className="h-7 w-12 bg-gray-700 mx-auto" />
         ) : (
-          <p className="text-xl font-semibold">{profile?.dailyQuota ?? 1} vagas</p>
+          <p className="text-xl font-semibold">
+            {t('plan.quota', { count: profile?.dailyQuota ?? 1 })}
+          </p>
         )}
       </div>
       <div className="text-center">
-        <p className="text-sm text-gray-400 mb-1">Hoje</p>
+        <p className="text-sm text-gray-400 mb-1">{t('plan.today')}</p>
         {loading ? (
           <Skeleton className="h-7 w-12 bg-gray-700 mx-auto" />
         ) : (
-          <p className="text-xl font-semibold">{stats?.todayCount ?? 0} candidaturas</p>
+          <p className="text-xl font-semibold">
+            {t('plan.todayCount', { count: stats?.todayCount ?? 0 })}
+          </p>
         )}
       </div>
     </div>
@@ -121,6 +127,7 @@ function PlanCard() {
 
 // ─── Automation Toggle ────────────────────────────────────────────────────────
 function AutomationToggle() {
+  const t = useTranslations('dashboard')
   const utils = trpc.useUtils()
   const { data: profile, isLoading } = trpc.user.getProfile.useQuery()
   const [localPaused, setLocalPaused] = useState<boolean | null>(null)
@@ -165,10 +172,10 @@ function AutomationToggle() {
               }`}
             />
           </button>
-          <span className="text-sm text-gray-700">Pausar automação</span>
+          <span className="text-sm text-gray-700">{t('automation.pause')}</span>
           {paused && (
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-              Automação pausada
+              {t('automationPaused')}
             </span>
           )}
         </>
@@ -179,6 +186,7 @@ function AutomationToggle() {
 
 // ─── Timeline ─────────────────────────────────────────────────────────────────
 function Timeline() {
+  const t = useTranslations('dashboard')
   const { data: timeline, isLoading } = trpc.application.getTimeline.useQuery()
 
   function formatDate(date: Date | null | undefined) {
@@ -194,7 +202,7 @@ function Timeline() {
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-5">
-      <h2 className="text-base font-semibold text-gray-900 mb-4">Atividade recente</h2>
+      <h2 className="text-base font-semibold text-gray-900 mb-4">{t('timeline.title')}</h2>
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -206,7 +214,7 @@ function Timeline() {
           ))}
         </div>
       ) : !timeline?.length ? (
-        <p className="text-sm text-gray-500">Nenhuma candidatura ainda.</p>
+        <p className="text-sm text-gray-500">{t('timeline.empty')}</p>
       ) : (
         <ul className="space-y-3">
           {timeline.map((item) => (
@@ -229,6 +237,7 @@ function Timeline() {
 
 // ─── Dashboard Page ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
+  const t = useTranslations('dashboard')
   const { data: profile, isLoading: profileLoading } = trpc.user.getProfile.useQuery()
   const { data: stats, isLoading: statsLoading } = trpc.application.getStats.useQuery()
   const paused = profile?.automationPaused ?? false
@@ -239,8 +248,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (searchParams.get('checkout') === 'success') {
-      showToast('Plano atualizado com sucesso')
-      // Remove query param without full page reload
+      showToast(t('toast.planUpdated'))
       router.replace('/dashboard')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -262,14 +270,14 @@ export default function DashboardPage() {
               <Skeleton className="h-8 w-48" />
             ) : (
               <h1 className="text-2xl font-semibold text-gray-900">
-                Olá, {profile?.name?.split(' ')[0] ?? 'usuário'} 👋
+                {t('greeting', { firstName: profile?.name?.split(' ')[0] ?? 'usuário' })} 👋
               </h1>
             )}
-            <p className="text-sm text-gray-500 mt-1">Acompanhe suas candidaturas</p>
+            <p className="text-sm text-gray-500 mt-1">{t('subtitle')}</p>
           </div>
           {paused && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-700 border border-amber-200">
-              Automação pausada
+              {t('automationPaused')}
             </span>
           )}
         </div>
@@ -279,11 +287,11 @@ export default function DashboardPage() {
 
         {/* Metric Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <MetricCard label="Total de candidaturas" value={total} loading={statsLoading} />
-          <MetricCard label="Enviadas com sucesso" value={sent} loading={statsLoading} />
-          <MetricCard label="Taxa de falha" value={`${failRate}%`} loading={statsLoading} />
+          <MetricCard label={t('metrics.total')} value={total} loading={statsLoading} />
+          <MetricCard label={t('metrics.sent')} value={sent} loading={statsLoading} />
+          <MetricCard label={t('metrics.failRate')} value={`${failRate}%`} loading={statsLoading} />
           <MetricCard
-            label="Score médio"
+            label={t('metrics.avgScore')}
             value={`${avgScore.toFixed(1)}%`}
             loading={statsLoading}
           />

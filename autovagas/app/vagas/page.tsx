@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { trpc } from '@/lib/trpc'
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
@@ -11,14 +12,6 @@ function Skeleton({ className }: { className?: string }) {
 }
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
-const STATUS_LABELS: Record<string, string> = {
-  PENDING: 'Pendente',
-  APPLYING: 'Candidatando',
-  SENT: 'Enviada',
-  FAILED: 'Falhou',
-  VIEWED: 'Visualizada',
-}
-
 const STATUS_COLORS: Record<string, string> = {
   PENDING: 'bg-gray-100 text-gray-700',
   APPLYING: 'bg-blue-100 text-blue-700',
@@ -28,19 +21,28 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const t = useTranslations('status')
+  const labels: Record<string, string> = {
+    PENDING: t('PENDING'),
+    APPLYING: t('APPLYING'),
+    SENT: t('SENT'),
+    FAILED: t('FAILED'),
+    VIEWED: t('VIEWED'),
+  }
   return (
     <span
       className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
         STATUS_COLORS[status] ?? 'bg-gray-100 text-gray-700'
       }`}
     >
-      {STATUS_LABELS[status] ?? status}
+      {labels[status] ?? status}
     </span>
   )
 }
 
 // ─── ApplyType Badge ──────────────────────────────────────────────────────────
 function ApplyTypeBadge({ applyType }: { applyType: string }) {
+  const t = useTranslations('applyType')
   const isEasy = applyType === 'EASY_APPLY'
   return (
     <span
@@ -48,7 +50,7 @@ function ApplyTypeBadge({ applyType }: { applyType: string }) {
         isEasy ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
       }`}
     >
-      {isEasy ? 'Easy Apply' : 'Externo'}
+      {isEasy ? t('EASY_APPLY') : t('EXTERNAL')}
     </span>
   )
 }
@@ -111,6 +113,7 @@ function ApplicationCard({
   item: ApplicationItem
   onClick: () => void
 }) {
+  const t = useTranslations('vagas')
   const showManualApply =
     item.status === 'FAILED' && item.failReason === 'FORM_NOT_SUPPORTED' && item.directUrl
 
@@ -159,28 +162,20 @@ function ApplicationCard({
           onClick={(e) => e.stopPropagation()}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800 underline underline-offset-2"
         >
-          Candidatar manualmente ↗
+          {t('manualApply')}
         </a>
       )}
     </div>
   )
 }
 
-// ─── Log action icons & labels ────────────────────────────────────────────────
+// ─── Log action icons ──────────────────────────────────────────────────────────
 const ACTION_ICONS: Record<string, string> = {
   SCRAPE: '🔍',
   MATCH: '⚡',
   FILL_FORM: '✏️',
   SUBMIT: '📤',
   SCREENSHOT: '📸',
-}
-
-const ACTION_LABELS: Record<string, string> = {
-  SCRAPE: 'Coleta',
-  MATCH: 'Matching',
-  FILL_FORM: 'Preenchimento',
-  SUBMIT: 'Envio',
-  SCREENSHOT: 'Captura de tela',
 }
 
 type LogEntry = {
@@ -221,6 +216,15 @@ function DetailKeyValue({ detail }: { detail: unknown }) {
 }
 
 function LogTimeline({ applicationId }: { applicationId: string }) {
+  const tAction = useTranslations('logAction')
+  const actionLabels: Record<string, string> = {
+    SCRAPE: tAction('SCRAPE'),
+    MATCH: tAction('MATCH'),
+    FILL_FORM: tAction('FILL_FORM'),
+    SUBMIT: tAction('SUBMIT'),
+    SCREENSHOT: tAction('SCREENSHOT'),
+  }
+  const tVagas = useTranslations('vagas')
   const { data: logs, isLoading } = trpc.application.getLogs.useQuery({ applicationId })
 
   if (isLoading) {
@@ -240,7 +244,7 @@ function LogTimeline({ applicationId }: { applicationId: string }) {
   }
 
   if (!logs || logs.length === 0) {
-    return <p className="text-sm text-gray-400">Nenhum registro encontrado.</p>
+    return <p className="text-sm text-gray-400">{tVagas('logsEmpty')}</p>
   }
 
   return (
@@ -261,7 +265,7 @@ function LogTimeline({ applicationId }: { applicationId: string }) {
           <div className={`flex-1 pb-4 ${idx === logs.length - 1 ? '' : ''}`}>
             <div className="flex items-baseline justify-between gap-2">
               <span className="text-sm font-medium text-gray-800">
-                {ACTION_LABELS[log.action] ?? log.action}
+                {actionLabels[log.action] ?? log.action}
               </span>
               <span className="text-xs text-gray-400 tabular-nums shrink-0">
                 {formatDate(log.createdAt)}
@@ -301,6 +305,7 @@ function ApplicationDetailModal({
   app: ApplicationItem
   onClose: () => void
 }) {
+  const t = useTranslations('vagas')
   const showManualApply =
     app.failReason === 'FORM_NOT_SUPPORTED' && app.directUrl
 
@@ -328,7 +333,7 @@ function ApplicationDetailModal({
           </div>
           <button
             onClick={onClose}
-            aria-label="Fechar"
+            aria-label={t('modal.close')}
             className="shrink-0 text-gray-400 hover:text-gray-700 transition-colors text-xl leading-none"
           >
             ×
@@ -339,11 +344,11 @@ function ApplicationDetailModal({
         <div className="flex flex-wrap items-center gap-2 px-5 py-3 border-b border-gray-100">
           <StatusBadge status={app.status} />
           <span className="text-xs text-gray-400">
-            {Math.round(app.matchScore)}% compatibilidade
+            {t('compatibility', { score: Math.round(app.matchScore) })}
           </span>
           {app.appliedAt && (
             <span className="text-xs text-gray-400">
-              · Enviada em {formatDate(app.appliedAt)}
+              {t('sentAt', { date: formatDate(app.appliedAt) })}
             </span>
           )}
         </div>
@@ -352,10 +357,10 @@ function ApplicationDetailModal({
         {showManualApply && (
           <div className="px-5 py-3 bg-amber-50 border-b border-amber-100">
             <p className="text-sm text-amber-800 font-medium">
-              Formulário externo não mapeado
+              {t('modal.formNotSupported')}
             </p>
             <p className="text-xs text-amber-700 mt-0.5">
-              A automação não conseguiu preencher este formulário automaticamente.
+              {t('modal.formNotSupportedDesc')}
             </p>
             <a
               href={app.directUrl!}
@@ -363,7 +368,7 @@ function ApplicationDetailModal({
               rel="noopener noreferrer"
               className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-amber-900 underline underline-offset-2 hover:text-amber-700"
             >
-              Candidatar manualmente ↗
+              {t('manualApply')}
             </a>
           </div>
         )}
@@ -371,7 +376,7 @@ function ApplicationDetailModal({
         {/* Log timeline */}
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
-            Histórico
+            {t('modal.history')}
           </h3>
           <LogTimeline applicationId={app.id} />
         </div>
@@ -381,19 +386,12 @@ function ApplicationDetailModal({
 }
 
 // ─── Status filter options ─────────────────────────────────────────────────────
-const STATUS_FILTER_OPTIONS = [
-  { value: '', label: 'Todas' },
-  { value: 'PENDING', label: 'Pendente' },
-  { value: 'APPLYING', label: 'Candidatando' },
-  { value: 'SENT', label: 'Enviada' },
-  { value: 'FAILED', label: 'Falhou' },
-  { value: 'VIEWED', label: 'Visualizada' },
-] as const
-
-type StatusFilterValue = (typeof STATUS_FILTER_OPTIONS)[number]['value']
+type StatusFilterValue = '' | 'PENDING' | 'APPLYING' | 'SENT' | 'FAILED' | 'VIEWED'
 
 // ─── Vagas Page ───────────────────────────────────────────────────────────────
 export default function VagasPage() {
+  const t = useTranslations('vagas')
+  const tCommon = useTranslations('common')
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>('')
   const [selectedApp, setSelectedApp] = useState<ApplicationItem | null>(null)
 
@@ -418,6 +416,15 @@ export default function VagasPage() {
 
   const allItems = data?.pages.flatMap((p) => p.items) ?? []
 
+  const statusFilterOptions: { value: StatusFilterValue; label: string }[] = [
+    { value: '', label: t('filter.all') },
+    { value: 'PENDING', label: t('filter.pending') },
+    { value: 'APPLYING', label: t('filter.applying') },
+    { value: 'SENT', label: t('filter.sent') },
+    { value: 'FAILED', label: t('filter.failed') },
+    { value: 'VIEWED', label: t('filter.viewed') },
+  ]
+
   return (
     <main className="min-h-screen bg-[#fafaf8] p-6 md:p-10">
       <div className="max-w-4xl mx-auto space-y-5">
@@ -425,19 +432,19 @@ export default function VagasPage() {
         {automationPaused && (
           <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-amber-800 text-sm font-medium">
             <span>⚠</span>
-            <span>Automação pausada</span>
+            <span>{t('automationPaused')}</span>
           </div>
         )}
 
         {/* Page header + filter */}
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-semibold text-gray-900">Minhas vagas</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">{t('title')}</h1>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as StatusFilterValue)}
             className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-gray-900"
           >
-            {STATUS_FILTER_OPTIONS.map((opt) => (
+            {statusFilterOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
@@ -464,7 +471,7 @@ export default function VagasPage() {
           </div>
         ) : !allItems.length ? (
           <div className="bg-white border border-gray-200 rounded-xl p-10 text-center">
-            <p className="text-gray-500 text-sm">Nenhuma candidatura encontrada.</p>
+            <p className="text-gray-500 text-sm">{t('empty')}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -500,7 +507,7 @@ export default function VagasPage() {
                   disabled={isFetchingNextPage}
                   className="px-5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
                 >
-                  {isFetchingNextPage ? 'Carregando…' : 'Carregar mais'}
+                  {isFetchingNextPage ? tCommon('loading') : tCommon('loadMore')}
                 </button>
               </div>
             )}

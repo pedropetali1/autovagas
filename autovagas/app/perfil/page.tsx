@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { useTranslations } from 'next-intl'
 import { trpc } from '@/lib/trpc'
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
@@ -63,13 +64,14 @@ function Toggle({
 
 // ─── Profile Form ─────────────────────────────────────────────────────────────
 function ProfileForm() {
+  const t = useTranslations('perfil')
   const toast = useToast()
   const { data: profile, isLoading } = trpc.user.getProfile.useQuery()
   const utils = trpc.useUtils()
 
   const updateProfile = trpc.user.updateProfile.useMutation({
     onSuccess: () => {
-      toast.show('Perfil salvo')
+      toast.show(t('toast.profileSaved'))
       utils.user.getProfile.invalidate()
     },
   })
@@ -84,7 +86,7 @@ function ProfileForm() {
 
   const updateNotificationPrefs = trpc.user.updateNotificationPrefs.useMutation({
     onSuccess: () => {
-      toast.show('Notificações salvas')
+      toast.show(t('toast.notificationsSaved'))
       utils.user.getProfile.invalidate()
     },
   })
@@ -165,7 +167,7 @@ function ProfileForm() {
     await updateProfile.mutateAsync({
       minSalary: minSalary ? Number(minSalary) : undefined,
     })
-    toast.show('Filtros salvos')
+    toast.show(t('toast.filtersSaved'))
   }
 
   async function handleNotifToggle(key: keyof typeof notifPrefs, value: boolean) {
@@ -192,11 +194,11 @@ function ProfileForm() {
     const file = e.target.files?.[0]
     if (!file) return
     if (file.type !== 'application/pdf') {
-      toast.show('Apenas arquivos PDF são aceitos')
+      toast.show(t('toast.pdfOnly'))
       return
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast.show('O arquivo deve ter no máximo 5MB')
+      toast.show(t('toast.fileTooLarge'))
       return
     }
 
@@ -209,9 +211,9 @@ function ProfileForm() {
         headers: { 'Content-Type': 'application/pdf' },
       })
       await confirmCvUpload.mutateAsync()
-      toast.show('CV enviado com sucesso')
+      toast.show(t('toast.cvUploaded'))
     } catch {
-      toast.show('Erro ao enviar CV')
+      toast.show(t('toast.cvError'))
     } finally {
       setCvUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -226,11 +228,11 @@ function ProfileForm() {
       <Toast message={toast.message} />
 
       <div className="max-w-2xl mx-auto py-8 px-4 space-y-10">
-        <h1 className="text-2xl font-bold text-gray-900">Meu Perfil</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
 
         {/* ── Personal data ──────────────────────────────────────────────── */}
         <section>
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Dados pessoais</h2>
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">{t('personalData.title')}</h2>
           {isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -241,11 +243,11 @@ function ProfileForm() {
             <form onSubmit={handleSaveProfile} className="space-y-4">
               {(
                 [
-                  { label: 'Nome', name: 'name', type: 'text', placeholder: 'Seu nome completo' },
-                  { label: 'Telefone', name: 'phone', type: 'tel', placeholder: '+55 11 99999-9999' },
-                  { label: 'CEP', name: 'zipCode', type: 'text', placeholder: '00000-000' },
-                  { label: 'LinkedIn URL', name: 'linkedinUrl', type: 'url', placeholder: 'https://linkedin.com/in/...' },
-                  { label: 'Cargo desejado', name: 'desiredRole', type: 'text', placeholder: 'Ex: Desenvolvedor Full Stack' },
+                  { label: t('personalData.name'), name: 'name', type: 'text', placeholder: t('personalData.namePlaceholder') },
+                  { label: t('personalData.phone'), name: 'phone', type: 'tel', placeholder: t('personalData.phonePlaceholder') },
+                  { label: t('personalData.zipCode'), name: 'zipCode', type: 'text', placeholder: t('personalData.zipCodePlaceholder') },
+                  { label: t('personalData.linkedinUrl'), name: 'linkedinUrl', type: 'url', placeholder: t('personalData.linkedinUrlPlaceholder') },
+                  { label: t('personalData.desiredRole'), name: 'desiredRole', type: 'text', placeholder: t('personalData.desiredRolePlaceholder') },
                 ] as const
               ).map((field) => (
                 <div key={field.name}>
@@ -267,7 +269,7 @@ function ProfileForm() {
                 disabled={updateProfile.isPending}
                 className="bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 disabled:opacity-50"
               >
-                {updateProfile.isPending ? 'Salvando...' : 'Salvar perfil'}
+                {updateProfile.isPending ? t('personalData.saving') : t('personalData.save')}
               </button>
             </form>
           )}
@@ -275,7 +277,7 @@ function ProfileForm() {
 
         {/* ── Skills ─────────────────────────────────────────────────────── */}
         <section>
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">Habilidades</h2>
+          <h2 className="text-lg font-semibold text-gray-800 mb-2">{t('skills.title')}</h2>
           {isLoading ? (
             <div className="flex gap-2 flex-wrap">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -286,7 +288,7 @@ function ProfileForm() {
             <>
               {skills.length < 3 && (
                 <p className="text-amber-600 text-sm mb-3 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                  Adicione pelo menos 3 habilidades para ativar a automação.
+                  {t('skills.warning')}
                 </p>
               )}
               <div className="flex flex-wrap gap-2 mb-4">
@@ -300,7 +302,7 @@ function ProfileForm() {
                       type="button"
                       onClick={() => removeSkill.mutate({ id: skill.id })}
                       className="text-gray-400 hover:text-gray-700 leading-none"
-                      aria-label={`Remover ${skill.name}`}
+                      aria-label={t('skills.removeAriaLabel', { name: skill.name })}
                     >
                       ×
                     </button>
@@ -313,7 +315,7 @@ function ProfileForm() {
                   value={skillInput}
                   onChange={(e) => setSkillInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddSkill())}
-                  placeholder="Ex: React, Node.js"
+                  placeholder={t('skills.placeholder')}
                   className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
                 />
                 <button
@@ -322,7 +324,7 @@ function ProfileForm() {
                   disabled={addSkill.isPending || !skillInput.trim()}
                   className="bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 disabled:opacity-50"
                 >
-                  Adicionar
+                  {t('skills.add')}
                 </button>
               </div>
             </>
@@ -331,25 +333,25 @@ function ProfileForm() {
 
         {/* ── CV Upload ──────────────────────────────────────────────────── */}
         <section>
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">Currículo (CV)</h2>
+          <h2 className="text-lg font-semibold text-gray-800 mb-2">{t('cv.title')}</h2>
           {isLoading ? (
             <Skeleton className="h-24 w-full" />
           ) : (
             <div className="border border-gray-200 rounded-md p-4 space-y-3">
               {profile?.cvUrl ? (
                 <p className="text-sm text-gray-600">
-                  Arquivo atual:{' '}
+                  {t('cv.currentFile')}{' '}
                   <a
                     href={profile.cvUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 underline"
                   >
-                    cv.pdf
+                    {t('cv.fileName')}
                   </a>
                 </p>
               ) : (
-                <p className="text-sm text-gray-500">Nenhum CV enviado ainda.</p>
+                <p className="text-sm text-gray-500">{t('cv.empty')}</p>
               )}
               <div>
                 <input
@@ -364,9 +366,9 @@ function ProfileForm() {
                   htmlFor="cv-upload"
                   className={`inline-block cursor-pointer bg-white border border-gray-300 rounded-md px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 ${cvUploading ? 'opacity-50 pointer-events-none' : ''}`}
                 >
-                  {cvUploading ? 'Enviando...' : profile?.cvUrl ? 'Substituir CV' : 'Enviar CV'}
+                  {cvUploading ? t('cv.uploading') : profile?.cvUrl ? t('cv.replace') : t('cv.upload')}
                 </label>
-                <p className="text-xs text-gray-400 mt-1">PDF, máximo 5MB</p>
+                <p className="text-xs text-gray-400 mt-1">{t('cv.hint')}</p>
               </div>
             </div>
           )}
@@ -374,7 +376,7 @@ function ProfileForm() {
 
         {/* ── Notificações ───────────────────────────────────────────────── */}
         <section>
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Notificações</h2>
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">{t('notifications.title')}</h2>
           {isLoading ? (
             <div className="space-y-4">
               {Array.from({ length: 3 }).map((_, i) => (
@@ -386,17 +388,17 @@ function ProfileForm() {
               <Toggle
                 checked={notifPrefs.emailDigest}
                 onChange={(v) => handleNotifToggle('emailDigest', v)}
-                label="Resumo diário"
+                label={t('notifications.digest')}
               />
               <Toggle
                 checked={notifPrefs.emailOnViewed}
                 onChange={(v) => handleNotifToggle('emailOnViewed', v)}
-                label="Alerta quando vaga me visualizar"
+                label={t('notifications.viewed')}
               />
               <Toggle
                 checked={notifPrefs.emailOnFailed}
                 onChange={(v) => handleNotifToggle('emailOnFailed', v)}
-                label="Alerta quando candidatura falhar"
+                label={t('notifications.failed')}
               />
             </div>
           )}
@@ -404,7 +406,7 @@ function ProfileForm() {
 
         {/* ── Filtros ─────────────────────────────────────────────────────── */}
         <section>
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Filtros</h2>
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">{t('filters.title')}</h2>
           {isLoading ? (
             <div className="space-y-3">
               <Skeleton className="h-10 w-full" />
@@ -420,14 +422,14 @@ function ProfileForm() {
               {/* Salário mínimo */}
               <form onSubmit={handleSaveMinSalary} className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
-                  Salário mínimo (R$)
+                  {t('filters.minSalary')}
                 </label>
                 <div className="flex gap-2">
                   <input
                     type="number"
                     value={minSalary}
                     onChange={(e) => setMinSalary(e.target.value)}
-                    placeholder="5000"
+                    placeholder={t('filters.minSalaryPlaceholder')}
                     className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                   />
                   <button
@@ -435,7 +437,7 @@ function ProfileForm() {
                     disabled={updateProfile.isPending}
                     className="bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 disabled:opacity-50"
                   >
-                    Salvar
+                    {t('filters.save')}
                   </button>
                 </div>
               </form>
@@ -443,7 +445,7 @@ function ProfileForm() {
               {/* Empresas para excluir */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Empresas para excluir
+                  {t('filters.excludeCompanies')}
                 </label>
                 <div className="flex flex-wrap gap-2 mb-3">
                   {excludeCompanies.map((company) => (
@@ -456,14 +458,14 @@ function ProfileForm() {
                         type="button"
                         onClick={() => removeExcludeCompany.mutate({ company })}
                         className="text-red-400 hover:text-red-700 leading-none"
-                        aria-label={`Remover ${company}`}
+                        aria-label={t('filters.removeAriaLabel', { company })}
                       >
                         ×
                       </button>
                     </span>
                   ))}
                   {excludeCompanies.length === 0 && (
-                    <p className="text-sm text-gray-400">Nenhuma empresa excluída.</p>
+                    <p className="text-sm text-gray-400">{t('filters.noCompanies')}</p>
                   )}
                 </div>
                 <div className="flex gap-2">
@@ -474,7 +476,7 @@ function ProfileForm() {
                     onKeyDown={(e) =>
                       e.key === 'Enter' && (e.preventDefault(), handleAddCompany())
                     }
-                    placeholder="Ex: Empresa XYZ"
+                    placeholder={t('filters.excludeCompaniesPlaceholder')}
                     className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
                   />
                   <button
@@ -483,7 +485,7 @@ function ProfileForm() {
                     disabled={addExcludeCompany.isPending || !companyInput.trim()}
                     className="bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 disabled:opacity-50"
                   >
-                    Excluir
+                    {t('filters.exclude')}
                   </button>
                 </div>
               </div>

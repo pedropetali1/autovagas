@@ -1,0 +1,204 @@
+{
+  "common": {
+    "brand": "AutoVagas",
+    "loading": "Carregando…",
+    "saving": "Salvando...",
+    "uploading": "Enviando...",
+    "waiting": "Aguarde…",
+    "loadMore": "Carregar mais",
+    "add": "Adicionar",
+    "save": "Salvar",
+    "close": "Fechar"
+  },
+  "status": {
+    "PENDING": "Pendente",
+    "APPLYING": "Candidatando",
+    "SENT": "Enviada",
+    "FAILED": "Falhou",
+    "VIEWED": "Visualizada"
+  },
+  "applyType": {
+    "EASY_APPLY": "Easy Apply",
+    "EXTERNAL": "Externo"
+  },
+  "logAction": {
+    "SCRAPE": "Coleta",
+    "MATCH": "Matching",
+    "FILL_FORM": "Preenchimento",
+    "SUBMIT": "Envio",
+    "SCREENSHOT": "Captura de tela"
+  },
+  "landing": {
+    "nav": {
+      "signin": "Entrar",
+      "signup": "Começar grátis"
+    },
+    "hero": {
+      "title": "Candidate-se a vagas no LinkedIn enquanto você dorme.",
+      "description": "AutoVagas automatiza suas candidaturas com IA — analisa compatibilidade, preenche formulários e envia aplicações. Você só aparece para as entrevistas.",
+      "cta": "Começar grátis"
+    },
+    "howItWorks": {
+      "title": "Como funciona",
+      "subtitle": "Em 3 passos automatizados, o AutoVagas trabalha por você todos os dias às 8h da manhã.",
+      "step1": {
+        "number": "01",
+        "title": "Busca vagas",
+        "description": "Rastreamos o LinkedIn anonimamente usando Playwright com proxies rotativos para encontrar as melhores vagas para o seu perfil."
+      },
+      "step2": {
+        "number": "02",
+        "title": "Analisa compatibilidade",
+        "description": "Calculamos um score de compatibilidade entre suas skills e os requisitos da vaga, filtrando apenas as oportunidades mais relevantes."
+      },
+      "step3": {
+        "number": "03",
+        "title": "Candidata automaticamente",
+        "description": "Preenchemos formulários e submetemos candidaturas — Easy Apply e externos — enquanto você foca no que importa."
+      }
+    },
+    "stats": {
+      "applications": "candidaturas enviadas",
+      "jobsPerDay": "vagas analisadas por dia",
+      "activeUsers": "usuários ativos"
+    },
+    "pricing": {
+      "title": "Planos simples e transparentes",
+      "subtitle": "Comece grátis e escale conforme sua busca por emprego.",
+      "free": "Grátis",
+      "perMonth": "/mês",
+      "cta": "Começar grátis"
+    },
+    "finalCta": {
+      "title": "Pronto para automatizar sua busca?",
+      "description": "Crie sua conta gratuita em menos de 2 minutos e comece a receber candidaturas hoje.",
+      "button": "Criar conta grátis"
+    },
+    "footer": {
+      "copyright": "© 2026 AutoVagas. Todos os direitos reservados."
+    }
+  },
+  "dashboard": {
+    "greeting": "Olá, {firstName}",
+    "subtitle": "Acompanhe suas candidaturas",
+    "automationPaused": "Automação pausada",
+    "plan": {
+      "current": "Plano atual",
+      "dailyQuota": "Cota diária",
+      "today": "Hoje",
+      "quota": "{count, plural, one {# vaga} other {# vagas}}",
+      "todayCount": "{count, plural, one {# candidatura} other {# candidaturas}}"
+    },
+    "metrics": {
+      "total": "Total de candidaturas",
+      "sent": "Enviadas com sucesso",
+      "failRate": "Taxa de falha",
+      "avgScore": "Score médio"
+    },
+    "automation": {
+      "pause": "Pausar automação"
+    },
+    "timeline": {
+      "title": "Atividade recente",
+      "empty": "Nenhuma candidatura ainda."
+    },
+    "toast": {
+      "planUpdated": "Plano atualizado com sucesso"
+    }
+  },
+  "perfil": {
+    "title": "Meu Perfil",
+    "personalData": {
+      "title": "Dados pessoais",
+      "name": "Nome",
+      "namePlaceholder": "Seu nome completo",
+      "phone": "Telefone",
+      "phonePlaceholder": "+55 11 99999-9999",
+      "zipCode": "CEP",
+      "zipCodePlaceholder": "00000-000",
+      "linkedinUrl": "LinkedIn URL",
+      "linkedinUrlPlaceholder": "https://linkedin.com/in/...",
+      "desiredRole": "Cargo desejado",
+      "desiredRolePlaceholder": "Ex: Desenvolvedor Full Stack",
+      "save": "Salvar perfil",
+      "saving": "Salvando..."
+    },
+    "skills": {
+      "title": "Habilidades",
+      "warning": "Adicione pelo menos 3 habilidades para ativar a automação.",
+      "placeholder": "Ex: React, Node.js",
+      "add": "Adicionar",
+      "removeAriaLabel": "Remover {name}"
+    },
+    "cv": {
+      "title": "Currículo (CV)",
+      "currentFile": "Arquivo atual:",
+      "fileName": "cv.pdf",
+      "empty": "Nenhum CV enviado ainda.",
+      "upload": "Enviar CV",
+      "replace": "Substituir CV",
+      "uploading": "Enviando...",
+      "hint": "PDF, máximo 5MB"
+    },
+    "notifications": {
+      "title": "Notificações",
+      "digest": "Resumo diário",
+      "viewed": "Alerta quando vaga me visualizar",
+      "failed": "Alerta quando candidatura falhar"
+    },
+    "filters": {
+      "title": "Filtros",
+      "minSalary": "Salário mínimo (R$)",
+      "minSalaryPlaceholder": "5000",
+      "save": "Salvar",
+      "excludeCompanies": "Empresas para excluir",
+      "excludeCompaniesPlaceholder": "Ex: Empresa XYZ",
+      "exclude": "Excluir",
+      "noCompanies": "Nenhuma empresa excluída.",
+      "removeAriaLabel": "Remover {company}"
+    },
+    "toast": {
+      "profileSaved": "Perfil salvo",
+      "notificationsSaved": "Notificações salvas",
+      "pdfOnly": "Apenas arquivos PDF são aceitos",
+      "fileTooLarge": "O arquivo deve ter no máximo 5MB",
+      "cvUploaded": "CV enviado com sucesso",
+      "cvError": "Erro ao enviar CV",
+      "filtersSaved": "Filtros salvos"
+    }
+  },
+  "vagas": {
+    "title": "Minhas vagas",
+    "automationPaused": "Automação pausada",
+    "empty": "Nenhuma candidatura encontrada.",
+    "logsEmpty": "Nenhum registro encontrado.",
+    "manualApply": "Candidatar manualmente ↗",
+    "compatibility": "{score}% compatibilidade",
+    "sentAt": "· Enviada em {date}",
+    "filter": {
+      "all": "Todas",
+      "pending": "Pendente",
+      "applying": "Candidatando",
+      "sent": "Enviada",
+      "failed": "Falhou",
+      "viewed": "Visualizada"
+    },
+    "modal": {
+      "close": "Fechar",
+      "history": "Histórico",
+      "formNotSupported": "Formulário externo não mapeado",
+      "formNotSupportedDesc": "A automação não conseguiu preencher este formulário automaticamente."
+    }
+  },
+  "planos": {
+    "title": "Escolha seu plano",
+    "subtitle": "Aumente sua cota diária e candidate-se a mais vagas automaticamente.",
+    "yourPlan": "Seu plano",
+    "free": "Grátis",
+    "perMonth": "/mês",
+    "quota": "{count, plural, one {# vaga} other {# vagas}}/dia",
+    "subscribe": "Assinar",
+    "currentPlan": "Plano atual",
+    "waiting": "Aguarde…"
+  }
+}

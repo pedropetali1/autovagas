@@ -1,5 +1,6 @@
 import { Playfair_Display, DM_Sans } from 'next/font/google'
 import Link from 'next/link'
+import { getTranslations } from 'next-intl/server'
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -36,47 +37,24 @@ const PLANS = [
   },
 ]
 
-const STATS = [
-  { label: 'candidaturas enviadas', value: '10.000+' },
-  { label: 'vagas analisadas por dia', value: '50.000+' },
-  { label: 'usuários ativos', value: '2.500+' },
-]
-
-const STEPS = [
-  {
-    number: '01',
-    title: 'Busca vagas',
-    description: 'Rastreamos o LinkedIn anonimamente usando Playwright com proxies rotativos para encontrar as melhores vagas para o seu perfil.',
-    icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-      </svg>
-    ),
-  },
-  {
-    number: '02',
-    title: 'Analisa compatibilidade',
-    description: 'Calculamos um score de compatibilidade entre suas skills e os requisitos da vaga, filtrando apenas as oportunidades mais relevantes.',
-    icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-      </svg>
-    ),
-  },
-  {
-    number: '03',
-    title: 'Candidata automaticamente',
-    description: 'Preenchemos formulários e submetemos candidaturas — Easy Apply e externos — enquanto você foca no que importa.',
-    icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
-      </svg>
-    ),
-  },
-]
+const STATS_VALUES = [
+  { id: 'applications', value: '10.000+' },
+  { id: 'jobsPerDay', value: '50.000+' },
+  { id: 'activeUsers', value: '2.500+' },
+] as const
 
 // ─── Static Plan Card (no interactivity — links to /planos for signup) ────────
-function StaticPlanCard({ plan }: { plan: typeof PLANS[number] }) {
+function StaticPlanCard({
+  plan,
+  freeLabel,
+  perMonth,
+  cta,
+}: {
+  plan: typeof PLANS[number]
+  freeLabel: string
+  perMonth: string
+  cta: string
+}) {
   const isFree = plan.id === 'FREE'
   const isPro = plan.id === 'PRO'
 
@@ -92,13 +70,17 @@ function StaticPlanCard({ plan }: { plan: typeof PLANS[number] }) {
         </h3>
         <div className="flex items-baseline gap-1">
           {isFree ? (
-            <span className={`text-4xl font-bold ${isPro ? 'text-white' : 'text-gray-900'}`}>Grátis</span>
+            <span className={`text-4xl font-bold ${isPro ? 'text-white' : 'text-gray-900'}`}>
+              {freeLabel}
+            </span>
           ) : (
             <>
               <span className={`text-4xl font-bold ${isPro ? 'text-white' : 'text-gray-900'}`}>
                 R${plan.price}
               </span>
-              <span className={`text-sm ${isPro ? 'text-gray-400' : 'text-gray-500'}`}>/mês</span>
+              <span className={`text-sm ${isPro ? 'text-gray-400' : 'text-gray-500'}`}>
+                {perMonth}
+              </span>
             </>
           )}
         </div>
@@ -132,14 +114,50 @@ function StaticPlanCard({ plan }: { plan: typeof PLANS[number] }) {
             : 'bg-gray-900 text-white hover:bg-gray-800'
         }`}
       >
-        Começar grátis
+        {cta}
       </Link>
     </div>
   )
 }
 
 // ─── Landing Page (SSG) ───────────────────────────────────────────────────────
-export default function LandingPage() {
+export default async function LandingPage() {
+  const t = await getTranslations('landing')
+  const tCommon = await getTranslations('common')
+
+  const steps = [
+    {
+      number: t('howItWorks.step1.number'),
+      title: t('howItWorks.step1.title'),
+      description: t('howItWorks.step1.description'),
+      icon: (
+        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+        </svg>
+      ),
+    },
+    {
+      number: t('howItWorks.step2.number'),
+      title: t('howItWorks.step2.title'),
+      description: t('howItWorks.step2.description'),
+      icon: (
+        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+        </svg>
+      ),
+    },
+    {
+      number: t('howItWorks.step3.number'),
+      title: t('howItWorks.step3.title'),
+      description: t('howItWorks.step3.description'),
+      icon: (
+        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+        </svg>
+      ),
+    },
+  ]
+
   return (
     <div
       className={`${playfair.variable} ${dmSans.variable} min-h-screen`}
@@ -150,16 +168,16 @@ export default function LandingPage() {
         className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto"
         style={{ borderBottom: '1px solid #e8e7e0' }}
       >
-        <span className="text-xl font-bold text-gray-900">AutoVagas</span>
+        <span className="text-xl font-bold text-gray-900">{tCommon('brand')}</span>
         <div className="flex items-center gap-4">
           <Link href="/sign-in" className="text-sm text-gray-600 hover:text-gray-900">
-            Entrar
+            {t('nav.signin')}
           </Link>
           <Link
             href="/sign-up"
             className="text-sm bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
           >
-            Começar grátis
+            {t('nav.signup')}
           </Link>
         </div>
       </nav>
@@ -170,26 +188,24 @@ export default function LandingPage() {
           className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight"
           style={{ fontFamily: 'var(--font-playfair), Playfair Display, serif' }}
         >
-          Candidate-se a vagas no LinkedIn
-          <br />
-          <span className="text-gray-500">enquanto você dorme.</span>
+          {t('hero.title')}
         </h1>
         <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed">
-          AutoVagas automatiza suas candidaturas com IA — analisa compatibilidade, preenche formulários e envia aplicações. Você só aparece para as entrevistas.
+          {t('hero.description')}
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
             href="/sign-up"
             className="bg-gray-900 text-white px-8 py-4 rounded-xl text-base font-medium hover:bg-gray-800 transition-colors"
           >
-            Começar grátis
+            {t('hero.cta')}
           </Link>
           <Link
             href="#como-funciona"
             className="border text-gray-700 px-8 py-4 rounded-xl text-base font-medium hover:bg-gray-100 transition-colors"
             style={{ borderColor: '#e8e7e0' }}
           >
-            Como funciona
+            {t('howItWorks.title')}
           </Link>
         </div>
       </section>
@@ -198,15 +214,15 @@ export default function LandingPage() {
       <section className="border-y py-12" style={{ borderColor: '#e8e7e0', background: '#fff' }}>
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-            {STATS.map((stat) => (
-              <div key={stat.label}>
+            {STATS_VALUES.map((stat) => (
+              <div key={stat.id}>
                 <p
                   className="text-4xl font-bold text-gray-900 mb-2"
                   style={{ fontFamily: 'var(--font-playfair), Playfair Display, serif' }}
                 >
                   {stat.value}
                 </p>
-                <p className="text-gray-500 text-sm">{stat.label}</p>
+                <p className="text-gray-500 text-sm">{t(`stats.${stat.id}`)}</p>
               </div>
             ))}
           </div>
@@ -220,15 +236,15 @@ export default function LandingPage() {
             className="text-3xl md:text-4xl font-bold text-gray-900 mb-4"
             style={{ fontFamily: 'var(--font-playfair), Playfair Display, serif' }}
           >
-            Como funciona
+            {t('howItWorks.title')}
           </h2>
           <p className="text-gray-500 max-w-xl mx-auto">
-            Em 3 passos automatizados, o AutoVagas trabalha por você todos os dias às 8h da manhã.
+            {t('howItWorks.subtitle')}
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {STEPS.map((step) => (
+          {steps.map((step) => (
             <div
               key={step.number}
               className="bg-white rounded-2xl p-8"
@@ -253,14 +269,20 @@ export default function LandingPage() {
               className="text-3xl md:text-4xl font-bold text-gray-900 mb-4"
               style={{ fontFamily: 'var(--font-playfair), Playfair Display, serif' }}
             >
-              Planos simples e transparentes
+              {t('pricing.title')}
             </h2>
-            <p className="text-gray-500">Comece grátis e escale conforme sua busca por emprego.</p>
+            <p className="text-gray-500">{t('pricing.subtitle')}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {PLANS.map((plan) => (
-              <StaticPlanCard key={plan.id} plan={plan} />
+              <StaticPlanCard
+                key={plan.id}
+                plan={plan}
+                freeLabel={t('pricing.free')}
+                perMonth={t('pricing.perMonth')}
+                cta={t('pricing.cta')}
+              />
             ))}
           </div>
         </div>
@@ -273,16 +295,16 @@ export default function LandingPage() {
             className="text-3xl md:text-4xl font-bold text-gray-900 mb-6"
             style={{ fontFamily: 'var(--font-playfair), Playfair Display, serif' }}
           >
-            Pronto para automatizar sua busca?
+            {t('finalCta.title')}
           </h2>
           <p className="text-gray-500 mb-10 text-lg">
-            Crie sua conta gratuita em menos de 2 minutos e comece a receber candidaturas hoje.
+            {t('finalCta.description')}
           </p>
           <Link
             href="/sign-up"
             className="inline-block bg-gray-900 text-white px-10 py-4 rounded-xl text-base font-medium hover:bg-gray-800 transition-colors"
           >
-            Criar conta grátis
+            {t('finalCta.button')}
           </Link>
         </div>
       </section>
@@ -292,7 +314,7 @@ export default function LandingPage() {
         className="py-8 text-center text-sm text-gray-400"
         style={{ borderTop: '1px solid #e8e7e0' }}
       >
-        <p>© 2026 AutoVagas. Todos os direitos reservados.</p>
+        <p>{t('footer.copyright')}</p>
       </footer>
     </div>
   )
