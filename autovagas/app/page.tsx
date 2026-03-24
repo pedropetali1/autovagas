@@ -1,6 +1,8 @@
 import { Playfair_Display, DM_Sans } from 'next/font/google'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
+import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -122,6 +124,9 @@ function StaticPlanCard({
 
 // ─── Landing Page (SSG) ───────────────────────────────────────────────────────
 export default async function LandingPage() {
+  const { userId } = await auth()
+  if (userId) redirect('/dashboard')
+
   const t = await getTranslations('landing')
   const tCommon = await getTranslations('common')
 
