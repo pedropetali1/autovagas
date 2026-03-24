@@ -2,6 +2,7 @@ import { Worker, Queue, type Job } from 'bullmq'
 import { chromium } from 'playwright-core'
 import { prisma } from '@/lib/prisma'
 import { supabase } from '@/lib/supabase'
+import { sendEmail } from '@/lib/email'
 import { ApplyType, ApplicationStatus, LogAction } from '@prisma/client'
 
 // ─── Queue definitions ────────────────────────────────────────────────────────
@@ -567,6 +568,17 @@ async function applyExternal(
 async function runApply(applicationIds: string[]): Promise<void> {
   console.log(`[apply] Processing ${applicationIds.length} applications`)
 
+  // Track pipeline stats for digest email
+  let digestUser: {
+    name: string | null
+    email: string
+    emailDigest: boolean
+    emailOnFailed: boolean
+  } | null = null
+  let totalSent = 0
+  let totalFailed = 0
+  const failedApplications: Array<{ title: string; company: string; directUrl?: string | null }> = []
+
   for (const applicationId of applicationIds) {
     const application = await prisma.application.findUnique({
       where: { id: applicationId },
@@ -579,6 +591,16 @@ async function runApply(applicationIds: string[]): Promise<void> {
     if (!application) {
       console.warn(`[apply] Application ${applicationId} not found — skipping`)
       continue
+    }
+
+    // Capture user info for digest email (same user for all applications in a batch)
+    if (!digestUser) {
+      digestUser = {
+        name: application.user.name,
+        email: application.user.email,
+        emailDigest: application.user.emailDigest,
+        emailOnFailed: application.user.emailOnFailed,
+      }
     }
 
     // Only handle EASY_APPLY and EXTERNAL; skip unknown types
@@ -660,6 +682,27 @@ async function runApply(applicationIds: string[]): Promise<void> {
         },
       })
 
+      totalFailed++
+      failedApplications.push({
+        title: application.job.title,
+        company: application.job.company,
+        directUrl: null,
+      })
+
+      if (digestUser?.emailOnFailed) {
+        void sendEmail({
+          template: 'alerta-failed',
+          to: digestUser.email,
+          props: {
+            userName: digestUser.name ?? digestUser.email,
+            jobTitle: application.job.title,
+            company: application.job.company,
+            failReason: 'TIMEOUT',
+            directUrl: null,
+          },
+        })
+      }
+
       continue
     }
 
@@ -680,6 +723,7 @@ async function runApply(applicationIds: string[]): Promise<void> {
         },
       })
 
+      totalSent++
       console.log(`[apply] Successfully applied to ${applicationId}`)
     } else {
       const failReason = result.failReason ?? 'TIMEOUT'
@@ -720,8 +764,47 @@ async function runApply(applicationIds: string[]): Promise<void> {
         },
       })
 
+      totalFailed++
+      const directUrl =
+        failReason === 'FORM_NOT_SUPPORTED' ? application.job.linkedinUrl : null
+      failedApplications.push({
+        title: application.job.title,
+        company: application.job.company,
+        directUrl,
+      })
+
+      // Send alerta-failed email immediately (fire-and-forget)
+      if (digestUser?.emailOnFailed) {
+        void sendEmail({
+          template: 'alerta-failed',
+          to: digestUser.email,
+          props: {
+            userName: digestUser.name ?? digestUser.email,
+            jobTitle: application.job.title,
+            company: application.job.company,
+            failReason,
+            directUrl,
+          },
+        })
+      }
+
       console.warn(`[apply] Failed to apply to ${applicationId}: ${failReason}`)
     }
+  }
+
+  // Send daily digest email after all applications are processed
+  if (digestUser?.emailDigest && applicationIds.length > 0) {
+    void sendEmail({
+      template: 'resumo-diario',
+      to: digestUser.email,
+      props: {
+        userName: digestUser.name ?? digestUser.email,
+        totalAnalyzed: applicationIds.length,
+        totalSent,
+        totalFailed,
+        failedApplications,
+      },
+    })
   }
 
   console.log(`[apply] Finished processing ${applicationIds.length} applications`)

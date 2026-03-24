@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { createTRPCRouter, protectedProcedure } from '@/server/trpc'
 import { ApplicationStatus } from '@prisma/client'
+import { sendEmail } from '@/lib/email'
 
 export const applicationRouter = createTRPCRouter({
   list: protectedProcedure
@@ -119,5 +120,42 @@ export const applicationRouter = createTRPCRouter({
         where: { applicationId: input.applicationId },
         orderBy: { createdAt: 'asc' },
       })
+    }),
+
+  markViewed: protectedProcedure
+    .input(z.object({ applicationId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const application = await ctx.prisma.application.findUnique({
+        where: { id: input.applicationId },
+        select: { userId: true, job: { select: { title: true, company: true } } },
+      })
+
+      if (!application) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Application not found' })
+      }
+
+      if (application.userId !== ctx.user.id) {
+        throw new TRPCError({ code: 'FORBIDDEN' })
+      }
+
+      await ctx.prisma.application.update({
+        where: { id: input.applicationId },
+        data: { status: ApplicationStatus.VIEWED },
+      })
+
+      // Send alerta-viewed email (fire-and-forget)
+      if (ctx.user.emailOnViewed) {
+        void sendEmail({
+          template: 'alerta-viewed',
+          to: ctx.user.email,
+          props: {
+            userName: ctx.user.name ?? ctx.user.email,
+            jobTitle: application.job.title,
+            company: application.job.company,
+          },
+        })
+      }
+
+      return { success: true }
     }),
 })
