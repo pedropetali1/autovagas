@@ -344,8 +344,8 @@
         "Typecheck passes"
       ],
       "priority": 20,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Installed resend, @react-email/components, react-email. Created emails/resumo-diario.tsx (daily summary with stats table and failed apps list), emails/alerta-viewed.tsx (viewed alert), emails/alerta-failed.tsx (failure alert with FAIL_REASON_LABELS map and conditional 'Candidatar manualmente' button). Created lib/email.ts with sendEmail helper: discriminated union EmailPayload type for all 3 templates, wraps Resend SDK, logs errors but never throws. Uses RESEND_API_KEY and FROM_EMAIL env vars. Typecheck passes."
     },
     {
       "id": "US-021",

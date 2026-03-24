@@ -339,3 +339,16 @@ Started: Mon Mar 23 11:54:39 PDT 2026
   - BRT = UTC-3: today 00:00 BRT = 03:00 UTC; handle the case where current time < 03:00 UTC (still "yesterday BRT")
   - Prisma `_count.select` with `include` lets you filter/count relations in one query
 ---
+
+## 2026-03-24 - US-020
+- Installed `resend`, `@react-email/components`, `react-email`
+- Created `autovagas/emails/resumo-diario.tsx`: daily summary template with stats table and failed apps list
+- Created `autovagas/emails/alerta-viewed.tsx`: viewed alert template with blue badge
+- Created `autovagas/emails/alerta-failed.tsx`: failure alert with FAIL_REASON_LABELS map and conditional 'Candidatar manualmente' button
+- Created `autovagas/lib/email.ts`: `sendEmail` helper with discriminated union `EmailPayload` type; fire-and-forget (catches and logs, never throws); uses `RESEND_API_KEY` and `FROM_EMAIL` env vars; uses `createElement` to render React Email components
+- Files changed: autovagas/emails/resumo-diario.tsx, autovagas/emails/alerta-viewed.tsx, autovagas/emails/alerta-failed.tsx, autovagas/lib/email.ts, package.json, package-lock.json
+- **Learnings for future iterations:**
+  - `@react-email/components` `Preview` component only accepts `string` children — use template literals instead of JSX expressions with numbers
+  - `resend.emails.send({ react })` accepts a `React.ReactElement`; use `createElement(Component, props)` in server/worker contexts instead of JSX
+  - `sendEmail` pattern: discriminated union on `template` field for type-safe payload routing
+---
