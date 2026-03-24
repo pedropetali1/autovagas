@@ -263,3 +263,23 @@ Started: Mon Mar 23 11:54:39 PDT 2026
   - Application SCRAPE upsert: always upsert Application before creating ApplicationLog (need applicationId)
   - Export queues from worker module so cron (US-019) can enqueue without reimporting queue config
 ---
+
+## 2026-03-24 - US-016
+- Created `autovagas/workers/matching.ts`: BullMQ Worker consuming 'matching' queue
+- Loads user with skills via prisma.user.findUnique with include: { skills: true }
+- Excludes companies from User.excludeCompanies[] (case-insensitive toLowerCase comparison)
+- Excludes jobs where job.salary < user.minSalary (only when both are non-null)
+- Calculates matchScore = (skillsMatched / requirements.length) × 100; 100% when no requirements
+- Filters out matchScore < 40
+- Sorts remaining jobs by matchScore desc, selects top N = User.dailyQuota
+- Upserts Application records (update matchScore if exists, create as PENDING if new)
+- Creates MATCH ApplicationLog with detail { score, skillsMatched: string[], skillsMissed: string[] } for ALL evaluated jobs (not just selected ones)
+- Exports applyQueue; enqueues 'apply' job with { applicationIds[] } on completion
+- Files changed: autovagas/workers/matching.ts (created)
+- **Learnings for future iterations:**
+  - Matching worker receives jobIds from scraper worker; both use separate queue instances with same Redis connection config
+  - matchScore calculation: use string includes for fuzzy skill matching (skill in requirement OR requirement in skill)
+  - skillsMissed = requirements where no user skill matches (for MATCH log detail)
+  - When job.requirements is empty, default matchScore to 100 (no requirements = open to all)
+  - Export applyQueue from matching.ts so apply worker (US-017/018) and cron can reference it
+---

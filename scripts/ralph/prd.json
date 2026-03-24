@@ -275,8 +275,8 @@
         "Typecheck passes"
       ],
       "priority": 16,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Created workers/matching.ts: BullMQ Worker consuming 'matching' queue. Loads user with skills. Filters out excluded companies (case-insensitive) and jobs below minSalary. Calculates matchScore = (skillsMatched / requirements.length) × 100 (100% when no requirements). Filters out matchScore < 40. Selects top N by score (N = dailyQuota). Upserts Application records with matchScore. Creates MATCH ApplicationLog with { score, skillsMatched, skillsMissed }. Exports applyQueue + enqueues 'apply' job with { applicationIds[] }. Typecheck passes."
     },
     {
       "id": "US-017",
