@@ -376,8 +376,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 22,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Installed next-intl@4.8.3. Created i18n/request.ts (getRequestConfig, fixed locale pt-BR, loads messages/pt-BR.json). Updated next.config.ts with createNextIntlPlugin. Created messages/pt-BR.json with all user-visible strings across all pages (common, status, applyType, logAction, landing, dashboard, perfil, vagas, planos namespaces). Updated app/layout.tsx to async + NextIntlClientProvider wrapping. Updated landing page.tsx to use getTranslations() (server component). Updated dashboard, perfil, vagas, planos pages to use useTranslations() (client components). Dynamic status/logAction labels resolved via explicit key mapping (TypeScript-safe pattern). Typecheck and lint pass."
     }
   ]
 }
