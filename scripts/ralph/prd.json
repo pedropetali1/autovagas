@@ -328,8 +328,8 @@
         "Typecheck passes"
       ],
       "priority": 19,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Created workers/cron.ts: BullMQ Queue 'cron' with repeatable job '0 11 * * *' UTC (08:00 BRT) via setupCronJob(). Worker processes each tick by querying users where cvUrl IS NOT NULL AND automationPaused=false, then filters to users with >=3 skills. Computes today 00:00 BRT as UTC-3 offset. Checks each user's application count >= dailyQuota (quota_reached skip) or skips incomplete_profile users. Enqueues one 'scraper' job per eligible user. Logs { processed, skipped, reasons } stats. Typecheck passes."
     },
     {
       "id": "US-020",
