@@ -359,8 +359,8 @@
         "Typecheck passes"
       ],
       "priority": 21,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Extended workers/apply.ts: tracks digestUser + totalSent/totalFailed/failedApplications[] across the loop; sends alerta-failed (fire-and-forget) per FAILED application when user.emailOnFailed=true; sends resumo-diario after loop when user.emailDigest=true. Added markViewed mutation to server/routers/application.ts: verifies ownership, sets status=VIEWED, sends alerta-viewed (fire-and-forget) when user.emailOnViewed=true. All email sends use void pattern for fire-and-forget. Typecheck passes."
     },
     {
       "id": "US-022",

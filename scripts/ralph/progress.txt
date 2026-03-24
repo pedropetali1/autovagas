@@ -340,6 +340,19 @@ Started: Mon Mar 23 11:54:39 PDT 2026
   - Prisma `_count.select` with `include` lets you filter/count relations in one query
 ---
 
+## 2026-03-24 - US-021
+- Extended `autovagas/workers/apply.ts`: added pipeline stats tracking (digestUser, totalSent, totalFailed, failedApplications[]) across the application loop
+- For each FAILED application: sends `alerta-failed` email (fire-and-forget via `void sendEmail(...)`) when `user.emailOnFailed=true`; also handles the unexpected error catch path
+- After all applications processed: sends `resumo-diario` email with full pipeline stats when `user.emailDigest=true`
+- Added `application.markViewed` mutation to `server/routers/application.ts`: verifies ownership, updates status=VIEWED, sends `alerta-viewed` email when `user.emailOnViewed=true`
+- Files changed: autovagas/workers/apply.ts, autovagas/server/routers/application.ts
+- **Learnings for future iterations:**
+  - Fire-and-forget email pattern: `void sendEmail(...)` — the `void` operator suppresses the unhandled promise warning
+  - In the apply worker, all applicationIds in a batch belong to the same user — capture user on first iteration and reuse
+  - `ctx.user` in tRPC procedures has all User fields including emailOnViewed, emailOnFailed, emailDigest
+  - When adding markViewed, the `application.job` relation must be selected in the same query to have jobTitle/company for the email
+---
+
 ## 2026-03-24 - US-020
 - Installed `resend`, `@react-email/components`, `react-email`
 - Created `autovagas/emails/resumo-diario.tsx`: daily summary template with stats table and failed apps list
