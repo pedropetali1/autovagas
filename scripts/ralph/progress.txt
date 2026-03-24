@@ -238,3 +238,28 @@ Started: Mon Mar 23 11:54:39 PDT 2026
   - Static pricing section on landing: hardcode PLANS array (same data as billing router) — don't call tRPC from SSG page
   - Clerk signup/signin routes: /sign-up and /sign-in (configured via Clerk middleware)
 ---
+---
+
+## 2026-03-24 - US-015
+- Created `autovagas/workers/scraper.ts`: BullMQ Worker consuming 'scraper' queue
+- Playwright browser context with randomized userAgent, viewport (1280-1920px), locale (pt-BR), timezone (America/Sao_Paulo)
+- Optional PROXY_URL env var routing via parseProxyUrl helper
+- Rate limit: 500ms delay between requests = max 2 req/s per session
+- Challenge detection: HTTP 429, /checkpoint, /authwall, /captcha URL patterns
+- Exponential backoff: 30s → 60s → 120s with proxy rotation (new browser context per attempt) across 3 attempts
+- After 3 failed Playwright attempts: fallback to LinkedIn Jobs Guest API HTML scraper (regex-based card parsing)
+- Jobs upserted by linkedinUrl (dedup); applyType set by Easy Apply button detection
+- Application records created with PENDING status (upsert to avoid duplication)
+- SCRAPE ApplicationLog created per collected job
+- Enqueues 'matching' job with { userId, jobIds[] } on completion
+- Exports scraperQueue + matchingQueue for use by cron worker (US-019)
+- Files changed: autovagas/workers/scraper.ts (created)
+- **Learnings for future iterations:**
+  - Workers live in `autovagas/workers/` directory; TypeScript `**/*.ts` glob includes them
+  - BullMQ Queue + Worker pattern: create Queue for each queue name, Worker with connection config
+  - Playwright proxy: pass `{ server, username, password }` to `chromium.launch({ proxy })` — each attempt creates fresh browser to get new proxy session
+  - Challenge detection must check both response status AND final URL (after redirect) for authwall/captcha
+  - LinkedIn guest API endpoint: `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=...`
+  - Application SCRAPE upsert: always upsert Application before creating ApplicationLog (need applicationId)
+  - Export queues from worker module so cron (US-019) can enqueue without reimporting queue config
+---

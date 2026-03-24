@@ -255,8 +255,8 @@
         "Typecheck passes"
       ],
       "priority": 15,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Created workers/scraper.ts: BullMQ Worker consuming 'scraper' queue. Playwright browser context with randomized userAgent/viewport/locale/timezone, optional PROXY_URL routing. Rate limit 500ms between requests (2 req/s max). Challenge detection (HTTP 429, /checkpoint, /authwall, /captcha) triggers exponential backoff (30s→60s→120s) + proxy rotation across 3 attempts. After 3 failures: fallback to LinkedIn Jobs Guest API HTML parser. Jobs upserted by linkedinUrl; applyType set by Easy Apply button presence. Application records created PENDING (upsert dedup). SCRAPE ApplicationLog per job. Enqueues 'matching' job with { userId, jobIds[] }. Exports scraperQueue + matchingQueue for cron (US-019). Typecheck passes."
     },
     {
       "id": "US-016",
