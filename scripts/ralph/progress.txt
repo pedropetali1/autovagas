@@ -283,3 +283,27 @@ Started: Mon Mar 23 11:54:39 PDT 2026
   - When job.requirements is empty, default matchScore to 100 (no requirements = open to all)
   - Export applyQueue from matching.ts so apply worker (US-017/018) and cron can reference it
 ---
+
+## 2026-03-24 - US-017
+- Created `autovagas/workers/apply.ts`: BullMQ Worker consuming 'apply' queue
+- Filters to EASY_APPLY applications only (EXTERNAL will be handled by US-018)
+- Skips already-settled applications (SENT or FAILED status)
+- Sets status → APPLYING and creates FILL_FORM ApplicationLog before Playwright attempt
+- Playwright browser context with randomized userAgent, pt-BR locale, Sao_Paulo timezone, optional PROXY_URL
+- Navigates to job.linkedinUrl; detects captcha/authwall redirects
+- Clicks Easy Apply button via multiple selector fallbacks (aria-label, text content)
+- Fills name/email/phone fields using label/name/id/aria-label selectors
+- Downloads CV from user.cvUrl via fetch and uploads to file input via setInputFiles()
+- Takes screenshot, uploads to Supabase Storage at screenshots/{applicationId}/final.png, creates SCREENSHOT ApplicationLog
+- Submits via multiple button selector fallbacks
+- On success: SENT + appliedAt = now() + SUBMIT log { result: 'success' }
+- On CAPTCHA: FAILED + failReason='CAPTCHA' + SUBMIT log { reason: 'CAPTCHA' }
+- On timeout: FAILED + failReason='TIMEOUT' + SUBMIT log { reason: 'TIMEOUT' }
+- Files changed: autovagas/workers/apply.ts (created)
+- **Learnings for future iterations:**
+  - Easy Apply button has many selector variations — use multiple fallbacks with try/catch
+  - CV download from public URL then setInputFiles() with Buffer is the Playwright pattern for file upload
+  - Apply worker concurrency=1 to avoid LinkedIn rate limiting (sequential applications)
+  - Screenshot is taken after filling form but before submission (captures final filled state)
+  - Always check for challenge redirects both before AND after submission
+---

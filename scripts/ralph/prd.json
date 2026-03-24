@@ -294,8 +294,8 @@
         "Typecheck passes"
       ],
       "priority": 17,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Created workers/apply.ts: BullMQ Worker consuming 'apply' queue. Filters to EASY_APPLY jobs only (EXTERNAL handled by US-018). Sets status APPLYING + FILL_FORM log before attempting. Playwright navigates to linkedinUrl, clicks 'Candidatar-se fácil' button (multiple selector fallbacks), fills name/email/phone/CV fields, takes screenshot and uploads to Supabase Storage at screenshots/{applicationId}/final.png with SCREENSHOT log. Submits form (multiple selector fallbacks). On success: SENT + appliedAt + SUBMIT log { result: 'success' }. On challenge: CAPTCHA failReason. On timeout: TIMEOUT failReason. Both failures: FAILED status + SUBMIT log { reason }. Typecheck passes."
     },
     {
       "id": "US-018",
