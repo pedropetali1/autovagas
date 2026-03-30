@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { httpBatchLink } from '@trpc/client'
 import superjson from 'superjson'
-import { ClerkProvider } from '@clerk/nextjs'
 import { trpc } from '@/lib/trpc'
 
 function makeQueryClient() {
@@ -43,12 +42,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
   )
 
   return (
-    <ClerkProvider>
-      <trpc.Provider client={trpcClient} queryClient={queryClient}>
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
-      </trpc.Provider>
-    </ClerkProvider>
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </trpc.Provider>
   )
 }

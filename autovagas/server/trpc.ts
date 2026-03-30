@@ -1,11 +1,14 @@
 import { initTRPC, TRPCError } from '@trpc/server'
-import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
 import superjson from 'superjson'
 
 export async function createTRPCContext() {
-  const { userId: clerkId } = await auth()
-  return { clerkId, prisma }
+  const supabase = await createSupabaseServerClient()
+  const {
+    data: { user: supabaseUser },
+  } = await supabase.auth.getUser()
+  return { supabaseUser, prisma }
 }
 
 type Context = Awaited<ReturnType<typeof createTRPCContext>>
@@ -18,16 +21,24 @@ export const createTRPCRouter = t.router
 export const publicProcedure = t.procedure
 
 const enforceAuth = t.middleware(async ({ ctx, next }) => {
-  if (!ctx.clerkId) {
+  if (!ctx.supabaseUser) {
     throw new TRPCError({ code: 'UNAUTHORIZED' })
   }
 
-  const user = await ctx.prisma.user.findUnique({
-    where: { clerkId: ctx.clerkId },
+  let user = await ctx.prisma.user.findUnique({
+    where: { supabaseId: ctx.supabaseUser.id },
   })
 
   if (!user) {
-    throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found in database' })
+    user = await ctx.prisma.user.create({
+      data: {
+        supabaseId: ctx.supabaseUser.id,
+        email: ctx.supabaseUser.email!,
+        name:
+          (ctx.supabaseUser.user_metadata?.name as string | undefined) ||
+          ctx.supabaseUser.email!.split('@')[0],
+      },
+    })
   }
 
   return next({ ctx: { ...ctx, user } })
