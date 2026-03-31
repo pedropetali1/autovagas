@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { useTranslations } from 'next-intl'
+import { useSearchParams } from 'next/navigation'
 import { trpc } from '@/lib/trpc'
 
 // ─── Toast ───────────────────────────────────────────────────────────────────
@@ -17,16 +18,9 @@ function useToast() {
 function Toast({ message }: { message: string | null }) {
   if (!message) return null
   return (
-    <div className="fixed bottom-6 right-6 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg text-sm z-50">
+    <div className="fixed bottom-6 right-6 bg-[#b5ff4e] text-[#111] px-4 py-2 rounded-xl shadow-lg text-sm font-semibold z-50">
       {message}
     </div>
-  )
-}
-
-// ─── Skeleton ────────────────────────────────────────────────────────────────
-function Skeleton({ className }: { className?: string }) {
-  return (
-    <div className={`animate-pulse bg-gray-200 rounded ${className ?? ''}`} />
   )
 }
 
@@ -42,14 +36,14 @@ function Toggle({
 }) {
   return (
     <label className="flex items-center justify-between cursor-pointer select-none">
-      <span className="text-sm text-gray-700">{label}</span>
+      <span className="text-sm text-[#888]">{label}</span>
       <button
         type="button"
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-1 ${
-          checked ? 'bg-gray-900' : 'bg-gray-300'
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+          checked ? 'bg-[#b5ff4e]' : 'bg-[#333]'
         }`}
       >
         <span
@@ -223,20 +217,47 @@ function ProfileForm() {
   const skills = profile?.skills ?? []
   const excludeCompanies = profile?.excludeCompanies ?? []
 
+  const searchParams = useSearchParams()
+  const isSetup = searchParams.get('setup') === '1'
+
+  const missingItems = !profile ? [] : [
+    !profile.desiredRole && 'cargo desejado',
+    profile.skills.length < 3 && `skills (${profile.skills.length}/3)`,
+    !profile.cvUrl && 'CV (PDF)',
+  ].filter(Boolean) as string[]
+
+  const skeleton = 'bg-[#2a2a2a] animate-pulse rounded'
+  const inputClass = 'bg-[#141414] border border-[#2a2a2a] text-white placeholder:text-[#444] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#b5ff4e] w-full transition-colors'
+  const labelClass = 'text-[#888] text-xs mb-1 block'
+  const btnPrimary = 'bg-[#b5ff4e] text-[#111] font-bold rounded-xl px-4 py-2 text-sm hover:bg-[#c8ff6e] disabled:opacity-50 transition-colors'
+  const btnSecondary = 'bg-[#252525] text-white rounded-xl px-4 py-2 text-sm hover:bg-[#2f2f2f] disabled:opacity-50 transition-colors'
+
   return (
     <>
       <Toast message={toast.message} />
 
-      <div className="max-w-2xl mx-auto py-8 px-4 space-y-10">
-        <h1 className="text-2xl font-bold text-gray-900">{t('title')}</h1>
+      <div className="p-8 max-w-2xl mx-auto space-y-8">
+
+        <h1 className="text-white text-2xl font-bold">{t('title')}</h1>
+
+        {isSetup && !isLoading && missingItems.length > 0 && (
+          <div className="bg-[#1a2a1a] border border-[#2a4a2a] rounded-2xl px-5 py-4">
+            <p className="text-[#4ade80] font-semibold text-sm mb-1">Complete seu perfil para ativar a automação</p>
+            <ul className="text-[#888] text-sm space-y-0.5 list-disc list-inside">
+              {missingItems.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* ── Personal data ──────────────────────────────────────────────── */}
-        <section>
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">{t('personalData.title')}</h2>
+        <section className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 space-y-4">
+          <h2 className="text-[#666] text-xs font-semibold uppercase tracking-widest">{t('personalData.title')}</h2>
           {isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
+                <div key={i} className={`${skeleton} h-10 w-full`} />
               ))}
             </div>
           ) : (
@@ -251,23 +272,21 @@ function ProfileForm() {
                 ] as const
               ).map((field) => (
                 <div key={field.name}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {field.label}
-                  </label>
+                  <label className={labelClass}>{field.label}</label>
                   <input
                     type={field.type}
                     name={field.name}
                     value={form[field.name]}
                     onChange={handleFormChange}
                     placeholder={field.placeholder}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                    className={inputClass}
                   />
                 </div>
               ))}
               <button
                 type="submit"
                 disabled={updateProfile.isPending}
-                className="bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 disabled:opacity-50"
+                className={btnPrimary}
               >
                 {updateProfile.isPending ? t('personalData.saving') : t('personalData.save')}
               </button>
@@ -276,32 +295,32 @@ function ProfileForm() {
         </section>
 
         {/* ── Skills ─────────────────────────────────────────────────────── */}
-        <section>
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">{t('skills.title')}</h2>
+        <section className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 space-y-4">
+          <h2 className="text-[#666] text-xs font-semibold uppercase tracking-widest">{t('skills.title')}</h2>
           {isLoading ? (
             <div className="flex gap-2 flex-wrap">
               {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-8 w-20" />
+                <div key={i} className={`${skeleton} h-8 w-20`} />
               ))}
             </div>
           ) : (
             <>
               {skills.length < 3 && (
-                <p className="text-amber-600 text-sm mb-3 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                <p className="bg-[#2a1a00] border border-[#5a3a00] text-[#fbbf24] rounded-xl px-4 py-2 text-sm">
                   {t('skills.warning')}
                 </p>
               )}
-              <div className="flex flex-wrap gap-2 mb-4">
+              <div className="flex flex-wrap gap-2">
                 {skills.map((skill) => (
                   <span
                     key={skill.id}
-                    className="inline-flex items-center gap-1 bg-gray-100 text-gray-800 text-sm px-3 py-1 rounded-full"
+                    className="bg-[#252525] text-[#aaa] text-xs px-3 py-1 rounded-full inline-flex items-center gap-1"
                   >
                     {skill.name}
                     <button
                       type="button"
                       onClick={() => removeSkill.mutate({ id: skill.id })}
-                      className="text-gray-400 hover:text-gray-700 leading-none"
+                      className="text-[#555] hover:text-[#f87171] leading-none transition-colors"
                       aria-label={t('skills.removeAriaLabel', { name: skill.name })}
                     >
                       ×
@@ -316,13 +335,13 @@ function ProfileForm() {
                   onChange={(e) => setSkillInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddSkill())}
                   placeholder={t('skills.placeholder')}
-                  className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className={inputClass}
                 />
                 <button
                   type="button"
                   onClick={handleAddSkill}
                   disabled={addSkill.isPending || !skillInput.trim()}
-                  className="bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 disabled:opacity-50"
+                  className={btnSecondary}
                 >
                   {t('skills.add')}
                 </button>
@@ -332,26 +351,26 @@ function ProfileForm() {
         </section>
 
         {/* ── CV Upload ──────────────────────────────────────────────────── */}
-        <section>
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">{t('cv.title')}</h2>
+        <section className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 space-y-4">
+          <h2 className="text-[#666] text-xs font-semibold uppercase tracking-widest">{t('cv.title')}</h2>
           {isLoading ? (
-            <Skeleton className="h-24 w-full" />
+            <div className={`${skeleton} h-24 w-full`} />
           ) : (
-            <div className="border border-gray-200 rounded-md p-4 space-y-3">
+            <div className="border border-dashed border-[#2a2a2a] rounded-xl p-6 text-center space-y-3">
               {profile?.cvUrl ? (
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-[#888]">
                   {t('cv.currentFile')}{' '}
                   <a
                     href={profile.cvUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 underline"
+                    className="text-[#b5ff4e] hover:underline"
                   >
                     {t('cv.fileName')}
                   </a>
                 </p>
               ) : (
-                <p className="text-sm text-gray-500">{t('cv.empty')}</p>
+                <p className="text-sm text-[#555]">{t('cv.empty')}</p>
               )}
               <div>
                 <input
@@ -364,23 +383,23 @@ function ProfileForm() {
                 />
                 <label
                   htmlFor="cv-upload"
-                  className={`inline-block cursor-pointer bg-white border border-gray-300 rounded-md px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 ${cvUploading ? 'opacity-50 pointer-events-none' : ''}`}
+                  className={`inline-block cursor-pointer bg-[#252525] text-white rounded-xl px-4 py-2 text-sm hover:bg-[#2f2f2f] transition-colors ${cvUploading ? 'opacity-50 pointer-events-none' : ''}`}
                 >
                   {cvUploading ? t('cv.uploading') : profile?.cvUrl ? t('cv.replace') : t('cv.upload')}
                 </label>
-                <p className="text-xs text-gray-400 mt-1">{t('cv.hint')}</p>
+                <p className="text-xs text-[#555] mt-2">{t('cv.hint')}</p>
               </div>
             </div>
           )}
         </section>
 
         {/* ── Notificações ───────────────────────────────────────────────── */}
-        <section>
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">{t('notifications.title')}</h2>
+        <section className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 space-y-4">
+          <h2 className="text-[#666] text-xs font-semibold uppercase tracking-widest">{t('notifications.title')}</h2>
           {isLoading ? (
             <div className="space-y-4">
               {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-8 w-full" />
+                <div key={i} className={`${skeleton} h-8 w-full`} />
               ))}
             </div>
           ) : (
@@ -405,37 +424,35 @@ function ProfileForm() {
         </section>
 
         {/* ── Filtros ─────────────────────────────────────────────────────── */}
-        <section>
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">{t('filters.title')}</h2>
+        <section className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 space-y-4">
+          <h2 className="text-[#666] text-xs font-semibold uppercase tracking-widest">{t('filters.title')}</h2>
           {isLoading ? (
             <div className="space-y-3">
-              <Skeleton className="h-10 w-full" />
+              <div className={`${skeleton} h-10 w-full`} />
               <div className="flex gap-2 flex-wrap">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-8 w-24" />
+                  <div key={i} className={`${skeleton} h-8 w-24`} />
                 ))}
               </div>
-              <Skeleton className="h-10 w-full" />
+              <div className={`${skeleton} h-10 w-full`} />
             </div>
           ) : (
             <div className="space-y-6">
               {/* Salário mínimo */}
               <form onSubmit={handleSaveMinSalary} className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  {t('filters.minSalary')}
-                </label>
+                <label className={labelClass}>{t('filters.minSalary')}</label>
                 <div className="flex gap-2">
                   <input
                     type="number"
                     value={minSalary}
                     onChange={(e) => setMinSalary(e.target.value)}
                     placeholder={t('filters.minSalaryPlaceholder')}
-                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                    className={inputClass}
                   />
                   <button
                     type="submit"
                     disabled={updateProfile.isPending}
-                    className="bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 disabled:opacity-50"
+                    className={btnSecondary}
                   >
                     {t('filters.save')}
                   </button>
@@ -444,20 +461,18 @@ function ProfileForm() {
 
               {/* Empresas para excluir */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {t('filters.excludeCompanies')}
-                </label>
+                <label className={labelClass}>{t('filters.excludeCompanies')}</label>
                 <div className="flex flex-wrap gap-2 mb-3">
                   {excludeCompanies.map((company) => (
                     <span
                       key={company}
-                      className="inline-flex items-center gap-1 bg-red-50 text-red-700 border border-red-200 text-sm px-3 py-1 rounded-full"
+                      className="bg-[#3a1a1a] text-[#f87171] border border-[#5a2a2a] text-xs px-3 py-1 rounded-full inline-flex items-center gap-1"
                     >
                       {company}
                       <button
                         type="button"
                         onClick={() => removeExcludeCompany.mutate({ company })}
-                        className="text-red-400 hover:text-red-700 leading-none"
+                        className="text-[#f87171] hover:text-white leading-none transition-colors"
                         aria-label={t('filters.removeAriaLabel', { company })}
                       >
                         ×
@@ -465,7 +480,7 @@ function ProfileForm() {
                     </span>
                   ))}
                   {excludeCompanies.length === 0 && (
-                    <p className="text-sm text-gray-400">{t('filters.noCompanies')}</p>
+                    <p className="text-sm text-[#555]">{t('filters.noCompanies')}</p>
                   )}
                 </div>
                 <div className="flex gap-2">
@@ -477,13 +492,13 @@ function ProfileForm() {
                       e.key === 'Enter' && (e.preventDefault(), handleAddCompany())
                     }
                     placeholder={t('filters.excludeCompaniesPlaceholder')}
-                    className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className={inputClass}
                   />
                   <button
                     type="button"
                     onClick={handleAddCompany}
                     disabled={addExcludeCompany.isPending || !companyInput.trim()}
-                    className="bg-gray-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 disabled:opacity-50"
+                    className={btnSecondary}
                   >
                     {t('filters.exclude')}
                   </button>

@@ -91,37 +91,58 @@ async function fetchViaGuestApi(
   })
   const url = `https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?${params}`
 
-  const res = await fetch(url, {
-    headers: {
-      'User-Agent': randomItem(USER_AGENTS),
-      Accept: 'text/html,application/xhtml+xml',
-      'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
-    },
-  })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 15_000)
 
-  if (!res.ok) return []
+  let res: Response
+  try {
+    res = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': randomItem(USER_AGENTS),
+        Accept: 'text/html,application/xhtml+xml',
+        'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+      },
+    })
+  } catch (e) {
+    console.warn(`[scraper:guest] fetch error: ${e}`)
+    return []
+  } finally {
+    clearTimeout(timeout)
+  }
+
+  console.log(`[scraper:guest] status=${res.status} url=${url}`)
+  if (!res.ok) {
+    console.warn(`[scraper:guest] Non-OK response: ${res.status} ${res.statusText}`)
+    return []
+  }
 
   const html = await res.text()
+  console.log(`[scraper:guest] HTML length=${html.length}, snippet=${html.slice(0, 300).replace(/\s+/g, ' ')}`)
 
-  // Parse job cards from the guest API HTML fragment
+  // Parse job cards — split on </li> so each block is one card
   const jobs: LinkedInJobRaw[] = []
-  const cardRegex =
-    /<li[^>]*>[\s\S]*?<a[^>]+href="(https:\/\/www\.linkedin\.com\/jobs\/view\/[^"]+)"[^>]*>[\s\S]*?<\/li>/g
-  const titleRegex = /<h3[^>]*class="[^"]*base-search-card__title[^"]*"[^>]*>([\s\S]*?)<\/h3>/
-  const companyRegex =
-    /<h4[^>]*class="[^"]*base-search-card__subtitle[^"]*"[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/
-  const locationRegex =
-    /<span[^>]*class="[^"]*job-search-card__location[^"]*"[^>]*>([\s\S]*?)<\/span>/
+  const blocks = html.split('</li>')
 
-  let match: RegExpExecArray | null
-  while ((match = cardRegex.exec(html)) !== null && jobs.length < maxJobs) {
-    const card = match[0]
-    const linkedinUrl = match[1].split('?')[0]
-    const title = titleRegex.exec(card)?.[1]?.replace(/<[^>]+>/g, '').trim() ?? ''
-    const company = companyRegex.exec(card)?.[1]?.replace(/<[^>]+>/g, '').trim() ?? ''
-    const location = locationRegex.exec(card)?.[1]?.replace(/<[^>]+>/g, '').trim()
+  const titleRegex = /class="[^"]*base-search-card__title[^"]*"[^>]*>([\s\S]*?)</
+  const companyRegex = /class="[^"]*base-search-card__subtitle[^"]*"[\s\S]*?href[^>]*>([\s\S]*?)<\/a/
+  const locationRegex = /class="[^"]*job-search-card__location[^"]*"[^>]*>([\s\S]*?)</
+  // LinkedIn may use www or country-code subdomains (e.g. br.linkedin.com)
+  const urlRegex = /href="(https:\/\/[a-z.]*linkedin\.com\/jobs\/view\/[^"?]+)/
 
-    if (!title || !company || !linkedinUrl) continue
+  for (const block of blocks) {
+    if (jobs.length >= maxJobs) break
+    if (!block.includes('base-search-card')) continue
+
+    const urlMatch = urlRegex.exec(block)
+    if (!urlMatch) continue
+    const linkedinUrl = urlMatch[1]
+
+    const title = titleRegex.exec(block)?.[1]?.replace(/<[^>]+>/g, '').trim() ?? ''
+    const company = companyRegex.exec(block)?.[1]?.replace(/<[^>]+>/g, '').trim() ?? ''
+    const location = locationRegex.exec(block)?.[1]?.replace(/<[^>]+>/g, '').trim()
+
+    if (!title || !company) continue
 
     jobs.push({
       title,
@@ -130,10 +151,11 @@ async function fetchViaGuestApi(
       linkedinUrl,
       requirements: [],
       remote: false,
-      easyApply: false, // Unknown from guest API — default to EXTERNAL; matching worker will score appropriately
+      easyApply: false,
     })
   }
 
+  console.log(`[scraper:guest] Parsed ${jobs.length} jobs from ${blocks.length} blocks`)
   return jobs
 }
 
@@ -282,9 +304,13 @@ async function runScraper(userId: string): Promise<void> {
     }
   }
 
-  // Fallback to guest API after 3 failed Playwright attempts
-  if (lastError) {
-    console.warn('[scraper] All Playwright attempts failed — falling back to Guest API')
+  // Fallback to guest API if Playwright failed or returned 0 results (likely blocked)
+  if (lastError || jobs.length === 0) {
+    if (jobs.length === 0) {
+      console.warn('[scraper] Playwright returned 0 jobs (likely blocked) — falling back to Guest API')
+    } else {
+      console.warn('[scraper] All Playwright attempts failed — falling back to Guest API')
+    }
     jobs = await fetchViaGuestApi(user.desiredRole, maxJobs)
   }
 

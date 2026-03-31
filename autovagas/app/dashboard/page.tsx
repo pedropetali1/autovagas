@@ -1,311 +1,502 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import Link from 'next/link'
+import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { trpc } from '@/lib/trpc'
 
-// ─── Toast ───────────────────────────────────────────────────────────────────
-function useToast() {
-  const [message, setMessage] = useState<string | null>(null)
-  const show = (msg: string) => {
-    setMessage(msg)
-    setTimeout(() => setMessage(null), 4000)
-  }
-  return { message, show }
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function profileIsIncomplete(profile: { desiredRole?: string | null; cvUrl?: string | null; skills: { id: string }[] } | undefined) {
+  if (!profile) return false
+  return !profile.desiredRole || !profile.cvUrl || profile.skills.length < 3
 }
 
-function Toast({ message }: { message: string | null }) {
-  if (!message) return null
-  return (
-    <div className="fixed bottom-6 right-6 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-lg text-sm z-50">
-      {message}
-    </div>
-  )
+// ─── Status config ────────────────────────────────────────────────────────────
+const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
+  PENDING:  { label: 'Pendente',    color: 'bg-[#3a3a3a] text-[#aaa]',         dot: '#555' },
+  APPLYING: { label: 'Aplicando',   color: 'bg-[#1e3a5f] text-[#60a5fa]',      dot: '#60a5fa' },
+  SENT:     { label: 'Enviada',     color: 'bg-[#14301a] text-[#4ade80]',      dot: '#4ade80' },
+  FAILED:   { label: 'Falhou',      color: 'bg-[#3a1a1a] text-[#f87171]',      dot: '#f87171' },
+  VIEWED:   { label: 'Visualizada', color: 'bg-[#2d1a3d] text-[#a78bfa]',      dot: '#a78bfa' },
 }
 
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
-function Skeleton({ className }: { className?: string }) {
-  return (
-    <div className={`animate-pulse bg-gray-200 rounded ${className ?? ''}`} />
-  )
-}
-
-// ─── Status Badge ─────────────────────────────────────────────────────────────
-const STATUS_COLORS: Record<string, string> = {
-  PENDING: 'bg-gray-100 text-gray-700',
-  APPLYING: 'bg-blue-100 text-blue-700',
-  SENT: 'bg-green-100 text-green-700',
-  FAILED: 'bg-red-100 text-red-700',
-  VIEWED: 'bg-purple-100 text-purple-700',
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const t = useTranslations('status')
-  const labels: Record<string, string> = {
-    PENDING: t('PENDING'),
-    APPLYING: t('APPLYING'),
-    SENT: t('SENT'),
-    FAILED: t('FAILED'),
-    VIEWED: t('VIEWED'),
-  }
-  return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-        STATUS_COLORS[status] ?? 'bg-gray-100 text-gray-700'
-      }`}
-    >
-      {labels[status] ?? status}
-    </span>
-  )
-}
-
-// ─── Metric Card ──────────────────────────────────────────────────────────────
-function MetricCard({
-  label,
-  value,
-  loading,
-}: {
-  label: string
-  value: string | number
-  loading: boolean
-}) {
-  return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5">
-      <p className="text-sm text-gray-500 mb-1">{label}</p>
-      {loading ? (
-        <Skeleton className="h-8 w-20 mt-1" />
-      ) : (
-        <p className="text-2xl font-semibold text-gray-900">{value}</p>
-      )}
-    </div>
-  )
-}
-
-// ─── Plan Card ────────────────────────────────────────────────────────────────
-function PlanCard() {
-  const t = useTranslations('dashboard')
-  const { data: profile, isLoading: profileLoading } = trpc.user.getProfile.useQuery()
-  const { data: stats, isLoading: statsLoading } = trpc.application.getStats.useQuery()
-
-  const planNames: Record<string, string> = { FREE: 'Free', PLUS: 'Plus', PRO: 'Pro' }
-  const loading = profileLoading || statsLoading
-
-  return (
-    <div className="bg-gray-900 text-white rounded-xl p-5 flex items-center justify-between">
-      <div>
-        <p className="text-sm text-gray-400 mb-1">{t('plan.current')}</p>
-        {loading ? (
-          <Skeleton className="h-7 w-16 bg-gray-700" />
-        ) : (
-          <p className="text-xl font-semibold">{planNames[profile?.plan ?? 'FREE'] ?? 'Free'}</p>
-        )}
-      </div>
-      <div className="text-center">
-        <p className="text-sm text-gray-400 mb-1">{t('plan.dailyQuota')}</p>
-        {loading ? (
-          <Skeleton className="h-7 w-12 bg-gray-700 mx-auto" />
-        ) : (
-          <p className="text-xl font-semibold">
-            {t('plan.quota', { count: profile?.dailyQuota ?? 1 })}
-          </p>
-        )}
-      </div>
-      <div className="text-center">
-        <p className="text-sm text-gray-400 mb-1">{t('plan.today')}</p>
-        {loading ? (
-          <Skeleton className="h-7 w-12 bg-gray-700 mx-auto" />
-        ) : (
-          <p className="text-xl font-semibold">
-            {t('plan.todayCount', { count: stats?.todayCount ?? 0 })}
-          </p>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ─── Automation Toggle ────────────────────────────────────────────────────────
-function AutomationToggle() {
-  const t = useTranslations('dashboard')
-  const utils = trpc.useUtils()
-  const { data: profile, isLoading } = trpc.user.getProfile.useQuery()
-  const [localPaused, setLocalPaused] = useState<boolean | null>(null)
-
-  const toggleAutomation = trpc.user.toggleAutomation.useMutation({
-    onMutate: () => {
-      const current = localPaused ?? profile?.automationPaused ?? false
-      setLocalPaused(!current)
-    },
-    onSuccess: (newValue) => {
-      setLocalPaused(newValue)
-      utils.user.getProfile.invalidate()
-    },
-    onError: () => {
-      setLocalPaused(null)
-    },
+// ─── Mini sparkline (SVG) ─────────────────────────────────────────────────────
+function Sparkline({ color = '#b5ff4e' }: { color?: string }) {
+  const points = [8, 15, 10, 20, 12, 8, 18, 6, 14, 10, 16, 4]
+  const max = Math.max(...points), min = Math.min(...points)
+  const h = 40, w = 120
+  const coords = points.map((p, i) => {
+    const x = (i / (points.length - 1)) * w
+    const y = h - ((p - min) / (max - min || 1)) * h
+    return `${x},${y}`
   })
-
-  const paused = localPaused ?? profile?.automationPaused ?? false
-
   return (
-    <div className="flex items-center gap-3">
-      {isLoading ? (
-        <Skeleton className="h-6 w-40" />
-      ) : (
-        <>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={!paused}
-            onClick={() => toggleAutomation.mutate()}
-            disabled={toggleAutomation.isPending}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 ${
-              paused
-                ? 'bg-amber-400 focus:ring-amber-400'
-                : 'bg-gray-900 focus:ring-gray-900'
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                paused ? 'translate-x-1' : 'translate-x-6'
-              }`}
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="opacity-80">
+      <polyline
+        points={coords.join(' ')}
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+// ─── Dot chart (like the "PRODUCT" card in the design) ───────────────────────
+function DotChart({ sent, failed, pending }: { sent: number; failed: number; pending: number }) {
+  const total = sent + failed + pending || 1
+  const data = [
+    { label: 'Enviadas', value: sent, color: '#4ade80' },
+    { label: 'Falhas', value: failed, color: '#f87171' },
+    { label: 'Pendentes', value: pending, color: '#555' },
+  ]
+  return (
+    <div className="space-y-2 mt-2">
+      {data.map((d) => (
+        <div key={d.label} className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full shrink-0" style={{ background: d.color }} />
+          <div className="flex-1 h-1.5 bg-[#2a2a2a] rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all"
+              style={{ width: `${(d.value / total) * 100}%`, background: d.color }}
             />
-          </button>
-          <span className="text-sm text-gray-700">{t('automation.pause')}</span>
-          {paused && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-              {t('automationPaused')}
-            </span>
-          )}
-        </>
-      )}
+          </div>
+          <span className="text-[11px] text-[#666] tabular-nums w-6 text-right">{d.value}</span>
+        </div>
+      ))}
     </div>
   )
 }
 
-// ─── Timeline ─────────────────────────────────────────────────────────────────
-function Timeline() {
-  const t = useTranslations('dashboard')
-  const { data: timeline, isLoading } = trpc.application.getTimeline.useQuery()
-
-  function formatDate(date: Date | null | undefined) {
-    if (!date) return '—'
-    return new Intl.DateTimeFormat('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(new Date(date))
-  }
-
+// ─── Score ring ───────────────────────────────────────────────────────────────
+function ScoreRing({ pct }: { pct: number }) {
+  const r = 28, circ = 2 * Math.PI * r
+  const dash = (pct / 100) * circ
+  const color = pct >= 70 ? '#b5ff4e' : pct >= 40 ? '#fbbf24' : '#f87171'
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5">
-      <h2 className="text-base font-semibold text-gray-900 mb-4">{t('timeline.title')}</h2>
-      {isLoading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center justify-between gap-4">
-              <Skeleton className="h-4 w-48" />
-              <Skeleton className="h-5 w-20" />
-              <Skeleton className="h-4 w-28" />
-            </div>
+    <svg width="72" height="72" viewBox="0 0 72 72">
+      <circle cx="36" cy="36" r={r} fill="none" stroke="#2a2a2a" strokeWidth="6" />
+      <circle
+        cx="36" cy="36" r={r} fill="none"
+        stroke={color} strokeWidth="6"
+        strokeDasharray={`${dash} ${circ - dash}`}
+        strokeLinecap="round"
+        transform="rotate(-90 36 36)"
+      />
+      <text x="36" y="40" textAnchor="middle" fill="white" fontSize="13" fontWeight="bold">
+        {pct}%
+      </text>
+    </svg>
+  )
+}
+
+// ─── Top nav ──────────────────────────────────────────────────────────────────
+function TopNav({ name, onTrigger, triggering }: {
+  name: string | undefined
+  onTrigger: () => void
+  triggering: boolean
+}) {
+  const pathname = usePathname()
+  const tabs = [
+    { href: '/dashboard', label: 'Dashboard' },
+    { href: '/vagas', label: 'Vagas' },
+    { href: '/perfil', label: 'Perfil' },
+  ]
+  return (
+    <header className="flex items-center justify-between px-8 py-4 border-b border-[#2a2a2a] shrink-0">
+      <div className="flex items-center gap-6">
+        <h1 className="text-white font-bold text-lg tracking-tight">AutoVagas</h1>
+        <nav className="flex items-center gap-1">
+          {tabs.map((t) => (
+            <Link
+              key={t.href}
+              href={t.href}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                pathname === t.href
+                  ? 'bg-[#b5ff4e] text-[#111]'
+                  : 'text-[#888] hover:text-white hover:bg-[#252525]'
+              }`}
+            >
+              {t.label}
+            </Link>
           ))}
+        </nav>
+      </div>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onTrigger}
+          disabled={triggering}
+          className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold bg-[#b5ff4e] text-[#111] hover:bg-[#c8ff6e] disabled:opacity-50 transition-colors"
+        >
+          {triggering ? (
+            <>
+              <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+              </svg>
+              Buscando...
+            </>
+          ) : (
+            <>
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+              Buscar Vagas
+            </>
+          )}
+        </button>
+        <Link
+          href="/planos"
+          className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[#1e1e1e] text-[#888] border border-[#2a2a2a] hover:border-[#444] hover:text-white transition-colors"
+        >
+          Planos
+        </Link>
+        <div className="w-8 h-8 rounded-full bg-[#b5ff4e] flex items-center justify-center">
+          <span className="text-[#111] font-bold text-xs">
+            {name?.charAt(0).toUpperCase() ?? '?'}
+          </span>
         </div>
-      ) : !timeline?.length ? (
-        <p className="text-sm text-gray-500">{t('timeline.empty')}</p>
-      ) : (
-        <ul className="space-y-3">
-          {timeline.map((item) => (
-            <li key={item.id} className="flex items-center justify-between gap-4 text-sm">
-              <div className="flex-1 min-w-0">
-                <span className="font-medium text-gray-900 truncate block">{item.job.title}</span>
-                <span className="text-gray-500">{item.job.company}</span>
-              </div>
-              <StatusBadge status={item.status} />
-              <span className="text-gray-400 text-xs whitespace-nowrap">
-                {formatDate(item.appliedAt)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+      </div>
+    </header>
   )
 }
 
 // ─── Dashboard Page ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const t = useTranslations('dashboard')
   const { data: profile, isLoading: profileLoading } = trpc.user.getProfile.useQuery()
   const { data: stats, isLoading: statsLoading } = trpc.application.getStats.useQuery()
-  const paused = profile?.automationPaused ?? false
+  const { data: timeline, isLoading: timelineLoading } = trpc.application.getTimeline.useQuery()
+  const { data: pipelineStatus } = trpc.application.getPipelineStatus.useQuery(undefined, {
+    refetchInterval: 5000,
+  })
+  const utils = trpc.useUtils()
 
-  const { message: toastMessage, show: showToast } = useToast()
   const searchParams = useSearchParams()
   const router = useRouter()
 
+  // ── Redirect if profile incomplete ──────────────────────────────────────────
+  useEffect(() => {
+    if (!profileLoading && profileIsIncomplete(profile)) {
+      router.replace('/perfil?setup=1')
+    }
+  }, [profile, profileLoading, router])
+
+  // ── Checkout success toast ───────────────────────────────────────────────────
+  const [toast, setToast] = useState<string | null>(null)
   useEffect(() => {
     if (searchParams.get('checkout') === 'success') {
-      showToast(t('toast.planUpdated'))
+      setToast('Plano atualizado com sucesso!')
       router.replace('/dashboard')
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  useEffect(() => {
+    if (toast) { const t = setTimeout(() => setToast(null), 4000); return () => clearTimeout(t) }
+  }, [toast])
 
-  const total = stats?.total ?? 0
-  const sent = stats?.sent ?? 0
-  const failed = stats?.failed ?? 0
-  const avgScore = stats?.avgScore ?? 0
-  const failRate = total > 0 ? ((failed / total) * 100).toFixed(1) : '0.0'
+  // ── Trigger pipeline ─────────────────────────────────────────────────────────
+  const triggerPipeline = trpc.application.triggerPipeline.useMutation({
+    onSuccess: () => setToast('Pipeline iniciado! As vagas aparecerão em alguns minutos.'),
+    onError: (e) => setToast(e.message),
+  })
+
+  // ── Automation toggle ────────────────────────────────────────────────────────
+  const [localPaused, setLocalPaused] = useState<boolean | null>(null)
+  const toggleAutomation = trpc.user.toggleAutomation.useMutation({
+    onMutate: () => setLocalPaused(!(localPaused ?? profile?.automationPaused ?? false)),
+    onSuccess: (v) => { setLocalPaused(v); utils.user.getProfile.invalidate() },
+    onError: () => setLocalPaused(null),
+  })
+  const paused = localPaused ?? profile?.automationPaused ?? false
+
+  // ── Derived stats ────────────────────────────────────────────────────────────
+  const total    = stats?.total ?? 0
+  const sent     = stats?.sent ?? 0
+  const failed   = stats?.failed ?? 0
+  const today    = stats?.todayCount ?? 0
+  const avgScore = Math.round(stats?.avgScore ?? 0)
+  const pending  = total - sent - failed
+
+  const planNames: Record<string, string> = { FREE: 'Free', PLUS: 'Plus', PRO: 'Pro' }
+  const plan = planNames[profile?.plan ?? 'FREE'] ?? 'Free'
+
+  const skeleton = 'bg-[#2a2a2a] animate-pulse rounded'
 
   return (
-    <main className="min-h-screen bg-[#fafaf8] p-6 md:p-10">
-      <div className="max-w-5xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            {profileLoading ? (
-              <Skeleton className="h-8 w-48" />
-            ) : (
-              <h1 className="text-2xl font-semibold text-gray-900">
-                {t('greeting', { firstName: profile?.name?.split(' ')[0] ?? 'usuário' })} 👋
-              </h1>
-            )}
-            <p className="text-sm text-gray-500 mt-1">{t('subtitle')}</p>
-          </div>
+    <div className="flex flex-col flex-1 min-h-0">
+      <TopNav
+        name={profile?.name}
+        onTrigger={() => triggerPipeline.mutate()}
+        triggering={triggerPipeline.isPending}
+      />
+
+      <main className="flex-1 p-8 overflow-auto">
+        <div className="max-w-6xl mx-auto space-y-5">
+
+          {/* ── Pipeline status ────────────────────────────────────────────── */}
+          {pipelineStatus && (() => {
+            const active = (pipelineStatus.scraper.active ?? 0) + (pipelineStatus.matching.active ?? 0) + (pipelineStatus.apply.active ?? 0)
+            const waiting = (pipelineStatus.scraper.waiting ?? 0) + (pipelineStatus.matching.waiting ?? 0) + (pipelineStatus.apply.waiting ?? 0)
+            const failed = (pipelineStatus.scraper.failed ?? 0) + (pipelineStatus.matching.failed ?? 0) + (pipelineStatus.apply.failed ?? 0)
+            if (active === 0 && waiting === 0 && failed === 0) return null
+            return (
+              <div className="flex items-center gap-4 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl px-5 py-3 text-sm">
+                <span className="text-[#666] font-medium">Pipeline:</span>
+                {active > 0 && (
+                  <span className="flex items-center gap-1.5 text-[#b5ff4e]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#b5ff4e] animate-pulse" />
+                    {active} em execução
+                  </span>
+                )}
+                {waiting > 0 && (
+                  <span className="flex items-center gap-1.5 text-[#888]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#555]" />
+                    {waiting} na fila
+                  </span>
+                )}
+                {failed > 0 && (
+                  <span className="flex items-center gap-1.5 text-[#f87171]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#f87171]" />
+                    {failed} falharam
+                  </span>
+                )}
+                <span className="text-[#444] text-xs ml-auto">atualiza a cada 5s</span>
+              </div>
+            )
+          })()}
+
+          {/* ── Paused banner ──────────────────────────────────────────────── */}
           {paused && (
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-700 border border-amber-200">
-              {t('automationPaused')}
-            </span>
+            <div className="flex items-center gap-2 bg-[#2a1a00] border border-[#5a3a00] rounded-xl px-4 py-3 text-sm text-[#fbbf24]">
+              <span className="font-bold">⚠</span>
+              <span>Automação pausada — nenhuma candidatura será enviada hoje.</span>
+            </div>
           )}
+
+          {/* ── Grid ────────────────────────────────────────────────────────── */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+            {/* ── Col 1: Candidaturas + Automação ─────────────────────────── */}
+            <div className="flex flex-col gap-5">
+
+              {/* CANDIDATURAS */}
+              <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6">
+                <p className="text-[#666] text-xs font-semibold uppercase tracking-widest mb-4">Candidaturas</p>
+                <div className="flex items-end justify-between">
+                  <div>
+                    {statsLoading ? (
+                      <div className={`${skeleton} h-10 w-20`} />
+                    ) : (
+                      <p className="text-white text-4xl font-bold tabular-nums">{total}</p>
+                    )}
+                    <p className="text-[#555] text-sm mt-1">total</p>
+                  </div>
+                  <div className="text-right">
+                    {statsLoading ? (
+                      <div className={`${skeleton} h-8 w-12`} />
+                    ) : (
+                      <p className="text-[#b5ff4e] text-2xl font-bold tabular-nums">+{today}</p>
+                    )}
+                    <p className="text-[#555] text-sm mt-1">hoje</p>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <Sparkline color="#b5ff4e" />
+                </div>
+              </div>
+
+              {/* AUTOMAÇÃO */}
+              <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 flex-1">
+                <p className="text-[#666] text-xs font-semibold uppercase tracking-widest mb-4">Automação</p>
+
+                {/* Toggle */}
+                <div className="flex items-center justify-between mb-5">
+                  <div>
+                    <p className="text-white text-sm font-medium">
+                      {paused ? 'Pausada' : 'Ativa'}
+                    </p>
+                    <p className="text-[#555] text-xs mt-0.5">
+                      {paused ? 'Clique para retomar' : 'Candidaturas automáticas ligadas'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={!paused}
+                    onClick={() => toggleAutomation.mutate()}
+                    disabled={toggleAutomation.isPending}
+                    className={`relative inline-flex h-7 w-13 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50 ${
+                      paused ? 'bg-[#333]' : 'bg-[#b5ff4e]'
+                    }`}
+                    style={{ width: 52 }}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 rounded-full transition-transform ${
+                        paused ? 'translate-x-1 bg-[#666]' : 'translate-x-7 bg-[#111]'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Plan */}
+                <div className="flex items-center justify-between py-3 border-t border-[#2a2a2a]">
+                  <p className="text-[#888] text-sm">Plano atual</p>
+                  {profileLoading ? (
+                    <div className={`${skeleton} h-5 w-12`} />
+                  ) : (
+                    <span className="text-white text-sm font-semibold bg-[#252525] px-2.5 py-0.5 rounded-full">
+                      {plan}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between py-3 border-t border-[#2a2a2a]">
+                  <p className="text-[#888] text-sm">Cota diária</p>
+                  {profileLoading ? (
+                    <div className={`${skeleton} h-5 w-8`} />
+                  ) : (
+                    <span className="text-[#b5ff4e] text-sm font-semibold">
+                      {profile?.dailyQuota ?? 1}/dia
+                    </span>
+                  )}
+                </div>
+
+                {/* Skills */}
+                {!profileLoading && (profile?.skills?.length ?? 0) > 0 && (
+                  <div className="pt-3 border-t border-[#2a2a2a]">
+                    <p className="text-[#555] text-xs mb-2">Skills cadastradas</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {profile!.skills.slice(0, 6).map((s) => (
+                        <span key={s.id} className="text-xs bg-[#252525] text-[#aaa] px-2 py-0.5 rounded-full">
+                          {s.name}
+                        </span>
+                      ))}
+                      {profile!.skills.length > 6 && (
+                        <span className="text-xs text-[#555]">+{profile!.skills.length - 6}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ── Col 2: Performance ──────────────────────────────────────── */}
+            <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6">
+              <p className="text-[#666] text-xs font-semibold uppercase tracking-widest mb-4">Performance</p>
+
+              {/* Score ring */}
+              <div className="flex items-center justify-center mb-6">
+                {statsLoading ? (
+                  <div className={`${skeleton} w-[72px] h-[72px] rounded-full`} />
+                ) : (
+                  <div className="text-center">
+                    <ScoreRing pct={avgScore} />
+                    <p className="text-[#555] text-xs mt-1">score médio</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Stat row */}
+              <div className="grid grid-cols-2 gap-3 mb-5">
+                {[
+                  { label: 'Enviadas', value: sent, color: '#4ade80' },
+                  { label: 'Falhas',   value: failed, color: '#f87171' },
+                  { label: 'Visualiz.', value: stats?.viewedCount ?? 0, color: '#a78bfa' },
+                  { label: 'Pendentes', value: pending < 0 ? 0 : pending, color: '#555' },
+                ].map((s) => (
+                  <div key={s.label} className="bg-[#141414] rounded-xl p-3">
+                    <div className="w-2 h-2 rounded-full mb-1.5" style={{ background: s.color }} />
+                    {statsLoading ? (
+                      <div className={`${skeleton} h-6 w-10`} />
+                    ) : (
+                      <p className="text-white text-xl font-bold tabular-nums">{s.value}</p>
+                    )}
+                    <p className="text-[#555] text-xs">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Distribution bars */}
+              {!statsLoading && (
+                <DotChart sent={sent} failed={failed} pending={pending < 0 ? 0 : pending} />
+              )}
+            </div>
+
+            {/* ── Col 3: Vagas Recentes ────────────────────────────────────── */}
+            <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-[#666] text-xs font-semibold uppercase tracking-widest">Vagas Recentes</p>
+                <Link href="/vagas" className="text-xs text-[#b5ff4e] hover:underline">
+                  Ver todas
+                </Link>
+              </div>
+
+              {timelineLoading ? (
+                <div className="space-y-3 flex-1">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className={`${skeleton} w-2.5 h-2.5 rounded-full shrink-0`} />
+                      <div className="flex-1 space-y-1">
+                        <div className={`${skeleton} h-3.5 w-3/4`} />
+                        <div className={`${skeleton} h-3 w-1/2`} />
+                      </div>
+                      <div className={`${skeleton} h-5 w-16 rounded-full`} />
+                    </div>
+                  ))}
+                </div>
+              ) : !timeline?.length ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
+                  <p className="text-[#444] text-sm">Nenhuma candidatura ainda</p>
+                  <p className="text-[#333] text-xs mt-1">A automação enviará vagas às 08:00</p>
+                </div>
+              ) : (
+                <ul className="space-y-3 flex-1 overflow-auto">
+                  {timeline.map((item) => {
+                    const cfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.PENDING
+                    return (
+                      <li key={item.id} className="flex items-center gap-3 group">
+                        {/* Status dot */}
+                        <div
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ background: cfg.dot }}
+                        />
+
+                        {/* Job info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white text-sm font-medium truncate leading-tight">
+                            {item.job.title}
+                          </p>
+                          <p className="text-[#555] text-xs truncate">{item.job.company}</p>
+                        </div>
+
+                        {/* Status + score */}
+                        <div className="text-right shrink-0">
+                          <span className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-full ${cfg.color}`}>
+                            {cfg.label}
+                          </span>
+                          {item.matchScore > 0 && (
+                            <p className="text-[#555] text-[10px] mt-0.5 tabular-nums">
+                              {Math.round(item.matchScore)}%
+                            </p>
+                          )}
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
         </div>
+      </main>
 
-        {/* Plan Card */}
-        <PlanCard />
-
-        {/* Metric Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <MetricCard label={t('metrics.total')} value={total} loading={statsLoading} />
-          <MetricCard label={t('metrics.sent')} value={sent} loading={statsLoading} />
-          <MetricCard label={t('metrics.failRate')} value={`${failRate}%`} loading={statsLoading} />
-          <MetricCard
-            label={t('metrics.avgScore')}
-            value={`${avgScore.toFixed(1)}%`}
-            loading={statsLoading}
-          />
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 bg-[#b5ff4e] text-[#111] px-4 py-2 rounded-xl shadow-lg text-sm font-semibold z-50">
+          {toast}
         </div>
-
-        {/* Automation Toggle */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
-          <AutomationToggle />
-        </div>
-
-        {/* Timeline */}
-        <Timeline />
-      </div>
-      <Toast message={toastMessage} />
-    </main>
+      )}
+    </div>
   )
 }

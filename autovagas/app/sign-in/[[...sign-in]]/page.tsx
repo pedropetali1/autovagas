@@ -31,57 +31,63 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md bg-white rounded-xl shadow-sm p-8 space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Entrar no AutoVagas</h1>
-          <p className="text-sm text-gray-500 mt-1">Acesse sua conta para continuar</p>
+    <div className="flex min-h-screen items-center justify-center bg-[#111111]">
+      <div className="w-full max-w-sm bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-8 space-y-6">
+        {/* Logo */}
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-[#b5ff4e] flex items-center justify-center">
+            <span className="text-[#111] font-black text-sm">AV</span>
+          </div>
+          <div className="text-center">
+            <h1 className="text-white text-2xl font-bold">Entrar</h1>
+            <p className="text-[#666] text-sm mt-1">Acesse sua conta para continuar</p>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">E-mail</label>
+            <label className="text-[#888] text-sm mb-1.5 block">E-mail</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="bg-[#141414] border border-[#2a2a2a] text-white placeholder:text-[#555] rounded-xl px-4 py-3 text-sm w-full focus:outline-none focus:border-[#b5ff4e] transition-colors"
               placeholder="seu@email.com"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Senha</label>
+            <label className="text-[#888] text-sm mb-1.5 block">Senha</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="bg-[#141414] border border-[#2a2a2a] text-white placeholder:text-[#555] rounded-xl px-4 py-3 text-sm w-full focus:outline-none focus:border-[#b5ff4e] transition-colors"
               placeholder="••••••••"
             />
           </div>
 
           {error && (
-            <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <div className="bg-[#3a1a1a] border border-[#f87171] text-[#f87171] rounded-xl px-4 py-2 text-sm">
               {error}
-            </p>
+            </div>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="w-full bg-[#b5ff4e] text-[#111] font-bold rounded-xl py-3 hover:bg-[#c8ff6e] disabled:opacity-50 transition-colors"
           >
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
 
-        <p className="text-center text-sm text-gray-500">
+        <p className="text-center text-sm text-[#666]">
           Não tem uma conta?{' '}
-          <Link href="/sign-up" className="text-blue-600 hover:underline font-medium">
-            Cadastre-se grátis
+          <Link href="/sign-up" className="text-[#b5ff4e] hover:underline font-medium">
+            Cadastre-se
           </Link>
         </p>
       </div>

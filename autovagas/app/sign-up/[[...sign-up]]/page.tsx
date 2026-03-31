@@ -39,21 +39,23 @@ export default function SignUpPage() {
 
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="w-full max-w-md bg-white rounded-xl shadow-sm p-8 text-center space-y-4">
-          <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-            <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+      <div className="flex min-h-screen items-center justify-center bg-[#111111]">
+        <div className="w-full max-w-sm bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-8 text-center space-y-5">
+          <div className="w-14 h-14 bg-[#b5ff4e] rounded-full flex items-center justify-center mx-auto">
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#111" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold">Verifique seu e-mail</h1>
-          <p className="text-gray-500 text-sm">
-            Enviamos um link de confirmação para{' '}
-            <span className="font-medium text-gray-800">{email}</span>.
-            <br />
-            Clique no link para ativar sua conta.
-          </p>
-          <Link href="/sign-in" className="text-blue-600 hover:underline text-sm">
+          <div>
+            <h1 className="text-white text-2xl font-bold">Verifique seu e-mail</h1>
+            <p className="text-[#888] text-sm mt-2 leading-relaxed">
+              Enviamos um link de confirmação para{' '}
+              <span className="font-medium text-white">{email}</span>.
+              <br />
+              Clique no link para ativar sua conta.
+            </p>
+          </div>
+          <Link href="/sign-in" className="text-[#b5ff4e] hover:underline text-sm">
             Voltar para o login
           </Link>
         </div>
@@ -62,69 +64,75 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md bg-white rounded-xl shadow-sm p-8 space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Criar conta no AutoVagas</h1>
-          <p className="text-sm text-gray-500 mt-1">Automatize suas candidaturas no LinkedIn</p>
+    <div className="flex min-h-screen items-center justify-center bg-[#111111]">
+      <div className="w-full max-w-sm bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-8 space-y-6">
+        {/* Logo */}
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-[#b5ff4e] flex items-center justify-center">
+            <span className="text-[#111] font-black text-sm">AV</span>
+          </div>
+          <div className="text-center">
+            <h1 className="text-white text-2xl font-bold">Criar conta</h1>
+            <p className="text-[#666] text-sm mt-1">Automatize suas candidaturas no LinkedIn</p>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Nome completo</label>
+            <label className="text-[#888] text-sm mb-1.5 block">Nome completo</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="bg-[#141414] border border-[#2a2a2a] text-white placeholder:text-[#555] rounded-xl px-4 py-3 text-sm w-full focus:outline-none focus:border-[#b5ff4e] transition-colors"
               placeholder="Seu nome"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">E-mail</label>
+            <label className="text-[#888] text-sm mb-1.5 block">E-mail</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="bg-[#141414] border border-[#2a2a2a] text-white placeholder:text-[#555] rounded-xl px-4 py-3 text-sm w-full focus:outline-none focus:border-[#b5ff4e] transition-colors"
               placeholder="seu@email.com"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Senha</label>
+            <label className="text-[#888] text-sm mb-1.5 block">Senha</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="bg-[#141414] border border-[#2a2a2a] text-white placeholder:text-[#555] rounded-xl px-4 py-3 text-sm w-full focus:outline-none focus:border-[#b5ff4e] transition-colors"
               placeholder="Mínimo 6 caracteres"
             />
           </div>
 
           {error && (
-            <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <div className="bg-[#3a1a1a] border border-[#f87171] text-[#f87171] rounded-xl px-4 py-2 text-sm">
               {error}
-            </p>
+            </div>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="w-full bg-[#b5ff4e] text-[#111] font-bold rounded-xl py-3 hover:bg-[#c8ff6e] disabled:opacity-50 transition-colors"
           >
             {loading ? 'Criando conta...' : 'Criar conta'}
           </button>
         </form>
 
-        <p className="text-center text-sm text-gray-500">
+        <p className="text-center text-sm text-[#666]">
           Já tem uma conta?{' '}
-          <Link href="/sign-in" className="text-blue-600 hover:underline font-medium">
+          <Link href="/sign-in" className="text-[#b5ff4e] hover:underline font-medium">
             Entrar
           </Link>
         </p>

@@ -1,6 +1,6 @@
 import { Worker, Queue, type Job } from 'bullmq'
 import { prisma } from '@/lib/prisma'
-import { LogAction } from '@prisma/client'
+import { ApplicationStatus, LogAction } from '@prisma/client'
 
 // ─── Queue definitions ────────────────────────────────────────────────────────
 
@@ -133,7 +133,21 @@ async function runMatching(userId: string, jobIds: string[]): Promise<void> {
     })
   }
 
-  // 7. Enqueue apply job with selected applicationIds
+  // 7. Mark non-selected applications as SKIPPED
+  const selectedIds = new Set(selected.map((s) => s.applicationId))
+  const skippedIds = scored
+    .map((s) => s.applicationId)
+    .filter((id) => !selectedIds.has(id))
+
+  if (skippedIds.length > 0) {
+    await prisma.application.updateMany({
+      where: { id: { in: skippedIds } },
+      data: { status: ApplicationStatus.SKIPPED },
+    })
+    console.log(`[matching] Marked ${skippedIds.length} applications as SKIPPED (dailyQuota=${user.dailyQuota})`)
+  }
+
+  // 8. Enqueue apply job with selected applicationIds
   const applicationIds = selected.map((s) => s.applicationId)
 
   if (applicationIds.length > 0) {

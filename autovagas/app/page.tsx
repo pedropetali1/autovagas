@@ -1,18 +1,7 @@
-import { Playfair_Display, DM_Sans } from 'next/font/google'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { redirect } from 'next/navigation'
-
-const playfair = Playfair_Display({
-  subsets: ['latin'],
-  variable: '--font-playfair',
-})
-
-const dmSans = DM_Sans({
-  subsets: ['latin'],
-  variable: '--font-dm-sans',
-})
 
 // ─── Static plan data (mirrors billing router PLANS) ──────────────────────────
 const PLANS = [
@@ -63,30 +52,30 @@ function StaticPlanCard({
   return (
     <div
       className={`relative flex flex-col rounded-2xl border p-8 ${
-        isPro ? 'bg-gray-900 text-white border-gray-900' : 'bg-white border-[#e8e7e0]'
+        isPro ? 'bg-[#1e2a0e] border-[#b5ff4e]' : 'bg-[#1a1a1a] border-[#2a2a2a]'
       }`}
     >
       <div className="mb-6">
-        <h3 className={`text-xl font-semibold mb-1 ${isPro ? 'text-white' : 'text-gray-900'}`}>
+        <h3 className="text-white text-xl font-semibold mb-1">
           {plan.name}
         </h3>
         <div className="flex items-baseline gap-1">
           {isFree ? (
-            <span className={`text-4xl font-bold ${isPro ? 'text-white' : 'text-gray-900'}`}>
+            <span className="text-white text-4xl font-bold">
               {freeLabel}
             </span>
           ) : (
             <>
-              <span className={`text-4xl font-bold ${isPro ? 'text-white' : 'text-gray-900'}`}>
+              <span className="text-white text-4xl font-bold">
                 R${plan.price}
               </span>
-              <span className={`text-sm ${isPro ? 'text-gray-400' : 'text-gray-500'}`}>
+              <span className="text-[#666] text-sm">
                 {perMonth}
               </span>
             </>
           )}
         </div>
-        <p className={`text-sm mt-1 ${isPro ? 'text-gray-400' : 'text-gray-500'}`}>
+        <p className="text-[#666] text-sm mt-1">
           {plan.dailyQuota} {plan.dailyQuota === 1 ? 'vaga' : 'vagas'}/dia
         </p>
       </div>
@@ -95,7 +84,7 @@ function StaticPlanCard({
         {plan.features.map((feature) => (
           <li key={feature} className="flex items-center gap-2 text-sm">
             <svg
-              className={`w-4 h-4 flex-shrink-0 ${isPro ? 'text-white' : 'text-gray-900'}`}
+              className="w-4 h-4 flex-shrink-0 text-[#b5ff4e]"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -103,18 +92,14 @@ function StaticPlanCard({
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
-            <span className={isPro ? 'text-gray-300' : 'text-gray-600'}>{feature}</span>
+            <span className="text-[#888]">{feature}</span>
           </li>
         ))}
       </ul>
 
       <Link
         href="/sign-up"
-        className={`w-full py-2.5 rounded-xl text-sm font-medium text-center transition-colors block ${
-          isPro
-            ? 'bg-white text-gray-900 hover:bg-gray-100'
-            : 'bg-gray-900 text-white hover:bg-gray-800'
-        }`}
+        className="w-full py-3 rounded-xl text-sm font-bold text-center transition-colors block bg-[#b5ff4e] text-[#111] hover:bg-[#c8ff6e]"
       >
         {cta}
       </Link>
@@ -165,23 +150,22 @@ export default async function LandingPage() {
   ]
 
   return (
-    <div
-      className={`${playfair.variable} ${dmSans.variable} min-h-screen`}
-      style={{ background: '#fafaf8', fontFamily: 'var(--font-dm-sans), DM Sans, sans-serif' }}
-    >
+    <div className="min-h-screen bg-[#111111]">
       {/* Nav */}
-      <nav
-        className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto"
-        style={{ borderBottom: '1px solid #e8e7e0' }}
-      >
-        <span className="text-xl font-bold text-gray-900">{tCommon('brand')}</span>
+      <nav className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto border-b border-[#2a2a2a]">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-[#b5ff4e] flex items-center justify-center">
+            <span className="text-[#111] font-black text-xs">AV</span>
+          </div>
+          <span className="text-white text-lg font-bold">{tCommon('brand')}</span>
+        </div>
         <div className="flex items-center gap-4">
-          <Link href="/sign-in" className="text-sm text-gray-600 hover:text-gray-900">
+          <Link href="/sign-in" className="text-sm text-[#888] hover:text-white transition-colors">
             {t('nav.signin')}
           </Link>
           <Link
             href="/sign-up"
-            className="text-sm bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+            className="text-sm bg-[#b5ff4e] text-[#111] font-bold px-4 py-2 rounded-xl hover:bg-[#c8ff6e] transition-colors"
           >
             {t('nav.signup')}
           </Link>
@@ -189,27 +173,23 @@ export default async function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="max-w-6xl mx-auto px-6 py-24 text-center">
-        <h1
-          className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight"
-          style={{ fontFamily: 'var(--font-playfair), Playfair Display, serif' }}
-        >
+      <section className="max-w-6xl mx-auto px-6 py-28 text-center">
+        <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
           {t('hero.title')}
         </h1>
-        <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-xl text-[#888] mb-10 max-w-2xl mx-auto leading-relaxed">
           {t('hero.description')}
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
             href="/sign-up"
-            className="bg-gray-900 text-white px-8 py-4 rounded-xl text-base font-medium hover:bg-gray-800 transition-colors"
+            className="bg-[#b5ff4e] text-[#111] font-bold px-8 py-4 rounded-xl text-base hover:bg-[#c8ff6e] transition-colors"
           >
             {t('hero.cta')}
           </Link>
           <Link
             href="#como-funciona"
-            className="border text-gray-700 px-8 py-4 rounded-xl text-base font-medium hover:bg-gray-100 transition-colors"
-            style={{ borderColor: '#e8e7e0' }}
+            className="border border-[#2a2a2a] text-[#888] px-8 py-4 rounded-xl text-base hover:text-white hover:border-[#444] transition-colors"
           >
             {t('howItWorks.title')}
           </Link>
@@ -217,18 +197,15 @@ export default async function LandingPage() {
       </section>
 
       {/* Stats */}
-      <section className="border-y py-12" style={{ borderColor: '#e8e7e0', background: '#fff' }}>
+      <section className="border-y border-[#2a2a2a] bg-[#1a1a1a] py-12">
         <div className="max-w-6xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
             {STATS_VALUES.map((stat) => (
               <div key={stat.id}>
-                <p
-                  className="text-4xl font-bold text-gray-900 mb-2"
-                  style={{ fontFamily: 'var(--font-playfair), Playfair Display, serif' }}
-                >
+                <p className="text-4xl font-bold text-[#b5ff4e] mb-2">
                   {stat.value}
                 </p>
-                <p className="text-gray-500 text-sm">{t(`stats.${stat.id}`)}</p>
+                <p className="text-[#666] text-sm">{t(`stats.${stat.id}`)}</p>
               </div>
             ))}
           </div>
@@ -238,13 +215,10 @@ export default async function LandingPage() {
       {/* Como funciona */}
       <section id="como-funciona" className="max-w-6xl mx-auto px-6 py-24">
         <div className="text-center mb-16">
-          <h2
-            className="text-3xl md:text-4xl font-bold text-gray-900 mb-4"
-            style={{ fontFamily: 'var(--font-playfair), Playfair Display, serif' }}
-          >
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
             {t('howItWorks.title')}
           </h2>
-          <p className="text-gray-500 max-w-xl mx-auto">
+          <p className="text-[#666] max-w-xl mx-auto">
             {t('howItWorks.subtitle')}
           </p>
         </div>
@@ -253,31 +227,27 @@ export default async function LandingPage() {
           {steps.map((step) => (
             <div
               key={step.number}
-              className="bg-white rounded-2xl p-8"
-              style={{ border: '1px solid #e8e7e0' }}
+              className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-8"
             >
               <div className="flex items-center gap-3 mb-6">
-                <span className="text-xs font-mono font-bold text-gray-400">{step.number}</span>
-                <div className="text-gray-700">{step.icon}</div>
+                <span className="text-xs font-mono font-bold text-[#555]">{step.number}</span>
+                <div className="text-[#b5ff4e]">{step.icon}</div>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">{step.title}</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">{step.description}</p>
+              <h3 className="text-lg font-semibold text-white mb-3">{step.title}</h3>
+              <p className="text-sm text-[#666] leading-relaxed">{step.description}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* Pricing */}
-      <section className="py-24" style={{ background: '#fafaf8' }}>
+      <section className="bg-[#111111] py-24">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-16">
-            <h2
-              className="text-3xl md:text-4xl font-bold text-gray-900 mb-4"
-              style={{ fontFamily: 'var(--font-playfair), Playfair Display, serif' }}
-            >
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
               {t('pricing.title')}
             </h2>
-            <p className="text-gray-500">{t('pricing.subtitle')}</p>
+            <p className="text-[#666]">{t('pricing.subtitle')}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -295,20 +265,17 @@ export default async function LandingPage() {
       </section>
 
       {/* Final CTA */}
-      <section className="py-24 text-center" style={{ borderTop: '1px solid #e8e7e0', background: '#fff' }}>
+      <section className="py-24 text-center border-t border-[#2a2a2a] bg-[#1a1a1a]">
         <div className="max-w-2xl mx-auto px-6">
-          <h2
-            className="text-3xl md:text-4xl font-bold text-gray-900 mb-6"
-            style={{ fontFamily: 'var(--font-playfair), Playfair Display, serif' }}
-          >
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
             {t('finalCta.title')}
           </h2>
-          <p className="text-gray-500 mb-10 text-lg">
+          <p className="text-[#666] mb-10 text-lg">
             {t('finalCta.description')}
           </p>
           <Link
             href="/sign-up"
-            className="inline-block bg-gray-900 text-white px-10 py-4 rounded-xl text-base font-medium hover:bg-gray-800 transition-colors"
+            className="inline-block bg-[#b5ff4e] text-[#111] font-bold px-10 py-4 rounded-xl text-base hover:bg-[#c8ff6e] transition-colors"
           >
             {t('finalCta.button')}
           </Link>
@@ -316,10 +283,7 @@ export default async function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer
-        className="py-8 text-center text-sm text-gray-400"
-        style={{ borderTop: '1px solid #e8e7e0' }}
-      >
+      <footer className="py-8 text-center text-sm text-[#444] border-t border-[#2a2a2a]">
         <p>{t('footer.copyright')}</p>
       </footer>
     </div>

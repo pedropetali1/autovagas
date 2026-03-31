@@ -18,6 +18,7 @@ enum ApplicationStatus {
   SENT
   FAILED
   VIEWED
+  SKIPPED
 }
 
 enum ApplyType {

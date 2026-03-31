@@ -8,7 +8,7 @@ import { trpc } from '@/lib/trpc'
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 function Skeleton({ className }: { className?: string }) {
   return (
-    <div className={`animate-pulse bg-gray-200 rounded ${className ?? ''}`} />
+    <div className={`animate-pulse bg-[#2a2a2a] rounded ${className ?? ''}`} />
   )
 }
 
@@ -40,41 +40,37 @@ function PlanCard({
     <div
       className={`relative flex flex-col rounded-2xl border p-8 ${
         isPro
-          ? 'bg-gray-900 text-white border-gray-900'
-          : 'bg-white border-gray-200'
+          ? 'bg-[#1e2a0e] border-[#b5ff4e]'
+          : 'bg-[#1a1a1a] border-[#2a2a2a]'
       }`}
     >
       {isCurrent && (
-        <span
-          className={`absolute top-4 right-4 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            isPro ? 'bg-white text-gray-900' : 'bg-gray-900 text-white'
-          }`}
-        >
+        <span className="absolute top-4 right-4 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#b5ff4e] text-[#111]">
           {t('yourPlan')}
         </span>
       )}
 
       <div className="mb-6">
-        <h2 className={`text-xl font-semibold mb-1 ${isPro ? 'text-white' : 'text-gray-900'}`}>
+        <h2 className="text-white text-xl font-semibold mb-1">
           {plan.name}
         </h2>
         <div className="flex items-baseline gap-1">
           {isFree ? (
-            <span className={`text-4xl font-bold ${isPro ? 'text-white' : 'text-gray-900'}`}>
+            <span className="text-white text-4xl font-bold">
               {t('free')}
             </span>
           ) : (
             <>
-              <span className={`text-4xl font-bold ${isPro ? 'text-white' : 'text-gray-900'}`}>
+              <span className="text-white text-4xl font-bold">
                 R${plan.price}
               </span>
-              <span className={`text-sm ${isPro ? 'text-gray-400' : 'text-gray-500'}`}>
+              <span className="text-[#666] text-sm">
                 {t('perMonth')}
               </span>
             </>
           )}
         </div>
-        <p className={`text-sm mt-1 ${isPro ? 'text-gray-400' : 'text-gray-500'}`}>
+        <p className="text-[#666] text-sm mt-1">
           {t('quota', { count: plan.dailyQuota })}
         </p>
       </div>
@@ -83,7 +79,7 @@ function PlanCard({
         {plan.features.map((feature) => (
           <li key={feature} className="flex items-center gap-2 text-sm">
             <svg
-              className={`w-4 h-4 flex-shrink-0 ${isPro ? 'text-white' : 'text-gray-900'}`}
+              className="w-4 h-4 flex-shrink-0 text-[#b5ff4e]"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -91,7 +87,7 @@ function PlanCard({
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
-            <span className={isPro ? 'text-gray-300' : 'text-gray-600'}>{feature}</span>
+            <span className="text-[#888]">{feature}</span>
           </li>
         ))}
       </ul>
@@ -100,7 +96,7 @@ function PlanCard({
         <button
           type="button"
           disabled
-          className="w-full py-2.5 rounded-xl text-sm font-medium bg-gray-100 text-gray-400 cursor-not-allowed"
+          className="w-full py-3 rounded-xl text-sm font-medium bg-[#252525] text-[#666] cursor-not-allowed"
         >
           {t('currentPlan')}
         </button>
@@ -108,11 +104,7 @@ function PlanCard({
         <button
           type="button"
           disabled
-          className={`w-full py-2.5 rounded-xl text-sm font-medium ${
-            isPro
-              ? 'bg-white/20 text-white cursor-not-allowed'
-              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-          }`}
+          className="w-full py-3 rounded-xl text-sm font-medium bg-[#252525] text-[#666] cursor-not-allowed"
         >
           {t('currentPlan')}
         </button>
@@ -121,11 +113,7 @@ function PlanCard({
           type="button"
           disabled={loading}
           onClick={() => onSubscribe(plan.id as 'PLUS' | 'PRO')}
-          className={`w-full py-2.5 rounded-xl text-sm font-medium transition-colors disabled:opacity-60 ${
-            isPro
-              ? 'bg-white text-gray-900 hover:bg-gray-100'
-              : 'bg-gray-900 text-white hover:bg-gray-800'
-          }`}
+          className="w-full py-3 rounded-xl text-sm font-bold transition-colors disabled:opacity-60 bg-[#b5ff4e] text-[#111] hover:bg-[#c8ff6e]"
         >
           {loading ? t('waiting') : t('subscribe')}
         </button>
@@ -163,11 +151,11 @@ export default function PlanosPage() {
   const isLoading = plansLoading || subLoading
 
   return (
-    <main className="min-h-screen bg-[#fafaf8] p-6 md:p-10">
-      <div className="max-w-5xl mx-auto">
+    <main className="p-8">
+      <div className="max-w-4xl mx-auto">
         <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold text-gray-900 mb-3">{t('title')}</h1>
-          <p className="text-gray-500">{t('subtitle')}</p>
+          <h1 className="text-white text-3xl font-bold mb-3">{t('title')}</h1>
+          <p className="text-[#666]">{t('subtitle')}</p>
         </div>
 
         {isLoading ? (

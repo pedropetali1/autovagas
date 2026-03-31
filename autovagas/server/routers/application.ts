@@ -3,6 +3,7 @@ import { TRPCError } from '@trpc/server'
 import { createTRPCRouter, protectedProcedure } from '@/server/trpc'
 import { ApplicationStatus } from '@prisma/client'
 import { sendEmail } from '@/lib/email'
+import { scraperQueue, matchingQueue, applyQueue } from '@/lib/queues'
 
 export const applicationRouter = createTRPCRouter({
   list: protectedProcedure
@@ -121,6 +122,31 @@ export const applicationRouter = createTRPCRouter({
         orderBy: { createdAt: 'asc' },
       })
     }),
+
+  getPipelineStatus: protectedProcedure.query(async () => {
+    const [scraperCounts, matchingCounts, applyCounts] = await Promise.all([
+      scraperQueue.getJobCounts('active', 'waiting', 'failed', 'completed'),
+      matchingQueue.getJobCounts('active', 'waiting', 'failed', 'completed'),
+      applyQueue.getJobCounts('active', 'waiting', 'failed', 'completed'),
+    ])
+    return { scraper: scraperCounts, matching: matchingCounts, apply: applyCounts }
+  }),
+
+  triggerPipeline: protectedProcedure.mutation(async ({ ctx }) => {
+    const user = await ctx.prisma.user.findUnique({
+      where: { id: ctx.user.id },
+      include: { _count: { select: { skills: true } } },
+    })
+
+    if (!user) throw new TRPCError({ code: 'NOT_FOUND' })
+    if (!user.desiredRole) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Preencha o cargo desejado no perfil.' })
+    if (!user.cvUrl) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Faça o upload do seu CV no perfil.' })
+    if (user._count.skills < 3) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cadastre pelo menos 3 skills no perfil.' })
+    if (user.automationPaused) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Reative a automação antes de buscar vagas.' })
+
+    await scraperQueue.add('scrape', { userId: ctx.user.id })
+    return { queued: true }
+  }),
 
   markViewed: protectedProcedure
     .input(z.object({ applicationId: z.string() }))
