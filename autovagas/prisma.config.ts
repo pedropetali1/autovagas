@@ -1,10 +1,11 @@
 import { defineConfig } from 'prisma/config'
 import * as dotenv from 'dotenv'
 
-dotenv.config()
+dotenv.config({ path: '.env.local' })
 
 export default defineConfig({
   datasource: {
-    url: process.env.DATABASE_URL!,
+    // Migrations use the direct connection (not the pooler)
+    url: process.env.DIRECT_URL ?? process.env.DATABASE_URL!,
   },
 })

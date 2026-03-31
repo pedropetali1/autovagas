@@ -6,14 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "workers": "node --env-file=.env.local --import tsx workers/index.ts"
   },
   "dependencies": {
-    "@clerk/nextjs": "^7.0.6",
-    "@electric-sql/pglite": "^0.4.1",
-    "@electric-sql/pglite-socket": "^0.1.1",
-    "@libsql/client": "^0.17.2",
-    "@prisma/adapter-libsql": "^7.5.0",
     "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
     "@prisma/internals": "^7.5.0",
@@ -25,7 +21,6 @@
     "@trpc/react-query": "^11.15.0",
     "@trpc/server": "^11.15.0",
     "@types/pg": "^8.20.0",
-    "better-sqlite3": "^12.8.0",
     "bullmq": "^5.71.0",
     "next": "16.2.1",
     "next-intl": "^4.8.3",
@@ -38,7 +33,6 @@
     "resend": "^6.9.4",
     "stripe": "^20.4.1",
     "superjson": "^2.2.6",
-    "svix": "^1.89.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -46,9 +40,11 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.3.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
