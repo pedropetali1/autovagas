@@ -1,0 +1,21 @@
+# Ralph Progress Log
+Started: Fri, Apr  3, 2026 12:58:27 PM
+---
+
+## Codebase Patterns
+- Project source is at `autovagas/autovagas/` (nested), not at root. All source edits go there.
+- Prisma migration history is corrupted: all 4 existing migrations try to create the same schema from scratch. Use `prisma db execute` + `prisma migrate resolve --applied` instead of `prisma migrate dev` for new migrations.
+- Typecheck: run `npx tsc --noEmit` from `autovagas/autovagas/` directory.
+- Prisma client regeneration: run `npx prisma generate` after schema changes.
+
+## 2026-04-03 - US-001
+- Added `scheduleDays Int[] @default([1,2,3,4,5])` and `scheduleTime String?` to `User` model in `prisma/schema.prisma`
+- Created manual migration `prisma/migrations/20260403000000_add_schedule_fields/migration.sql` (used IF NOT EXISTS syntax)
+- Applied via `prisma db execute` + `prisma migrate resolve --applied` due to corrupted migration history
+- Regenerated Prisma client with `prisma generate`
+- Files changed: `autovagas/prisma/schema.prisma`, `autovagas/prisma/migrations/20260403000000_add_schedule_fields/migration.sql`
+- **Learnings for future iterations:**
+  - Migration history is broken (4 migrations all recreate the same schema). Never use `prisma migrate dev` — it fails on shadow DB. Always use `prisma db execute` + `prisma migrate resolve --applied`.
+  - The working directory for npx commands must be `autovagas/autovagas/` (the nested Next.js project root).
+  - Branch `ralph/scheduled-pipeline` was created from `ralph/autovagas-mvp` as it didn't exist.
+---
