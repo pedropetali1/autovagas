@@ -14,19 +14,21 @@ export const cronQueue = new Queue('cron', { connection })
 
 // ─── Repeatable job setup ─────────────────────────────────────────────────────
 
-// '0 11 * * *' UTC = 08:00 BRT (America/Sao_Paulo is UTC-3)
 export async function setupCronJob(): Promise<void> {
+  // Remove old fixed daily job before registering the new hourly one
+  await cronQueue.removeRepeatable('daily-pipeline', { pattern: '0 11 * * *' })
+
   await cronQueue.add(
-    'daily-pipeline',
+    'hourly-pipeline',
     {},
     {
       repeat: {
-        pattern: '0 11 * * *',
+        pattern: '0 * * * *',
       },
-      jobId: 'daily-pipeline',
+      jobId: 'hourly-pipeline',
     },
   )
-  console.log('[cron] Repeatable job scheduled: 0 11 * * * UTC (08:00 BRT)')
+  console.log('[cron] Repeatable job scheduled: 0 * * * * (every hour)')
 }
 
 // ─── Main cron logic ──────────────────────────────────────────────────────────
@@ -37,14 +39,18 @@ interface CronStats {
   reasons: Record<string, number>
 }
 
-async function runDailyPipeline(): Promise<CronStats> {
+async function runHourlyPipeline(): Promise<CronStats> {
   const stats: CronStats = { processed: 0, skipped: 0, reasons: {} }
 
-  // 1. Find all users with at least 3 skills, a CV, and automation not paused
+  // 1. Get current BRT time to match against user schedules
+  const { hourStr, dayOfWeek, todayStartUTC: todayBrtStart } = getCurrentBRTTime()
+
+  // 2. Find eligible users whose schedule matches the current hour and day
   const eligibleUsers = await prisma.user.findMany({
     where: {
       cvUrl: { not: null },
       automationPaused: false,
+      scheduleTime: hourStr,
     },
     include: {
       _count: {
@@ -53,18 +59,17 @@ async function runDailyPipeline(): Promise<CronStats> {
     },
   })
 
-  // 2. Filter to users with >= 3 skills
-  const usersWithProfile = eligibleUsers.filter((u) => u._count.skills >= 3)
+  // 3. Filter by day of week (scheduleDays must contain current BRT dayOfWeek) and skills >= 3
+  const usersWithProfile = eligibleUsers.filter(
+    (u) => u._count.skills >= 3 && u.scheduleDays.includes(dayOfWeek),
+  )
 
-  // Track skipped users that were excluded by incomplete_profile
+  // Track skipped users excluded by incomplete_profile or wrong day
   const incompleteProfileSkipped = eligibleUsers.length - usersWithProfile.length
   if (incompleteProfileSkipped > 0) {
     stats.skipped += incompleteProfileSkipped
     stats.reasons['incomplete_profile'] = (stats.reasons['incomplete_profile'] ?? 0) + incompleteProfileSkipped
   }
-
-  // 3. Compute "today 00:00 BRT" as UTC using centralized helper
-  const { todayStartUTC: todayBrtStart } = getCurrentBRTTime()
 
   // 4. For each eligible user, check quota and enqueue scraper
   for (const user of usersWithProfile) {
@@ -95,9 +100,10 @@ async function runDailyPipeline(): Promise<CronStats> {
 export const cronWorker = new Worker(
   'cron',
   async (_job: Job) => {
-    console.log('[cron] Daily pipeline triggered')
-    const stats = await runDailyPipeline()
-    console.log('[cron] Daily pipeline complete:', JSON.stringify(stats))
+    const { hourStr, dayOfWeek } = getCurrentBRTTime()
+    console.log(`[cron] Hourly pipeline triggered at ${hourStr} BRT (day ${dayOfWeek})`)
+    const stats = await runHourlyPipeline()
+    console.log('[cron] Hourly pipeline complete:', JSON.stringify(stats))
     return stats
   },
   { connection, concurrency: 1 },
