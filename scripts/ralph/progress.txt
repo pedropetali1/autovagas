@@ -44,3 +44,75 @@ Started: Fri, Apr  3, 2026 12:58:27 PM
   - Filtering `scheduleTime` in the Prisma `where` clause (DB-level) is more efficient than post-filtering; `scheduleDays` must be checked in JS since Prisma doesn't support array-contains on Int[] for all providers.
   - Users without `scheduleTime` (null) are automatically excluded by the Prisma `scheduleTime: hourStr` filter since null !== any string.
 ---
+
+## 2026-04-03 - US-004
+- Added `updateSchedule` mutation to `server/routers/user.ts`
+- Input: `{ scheduleDays: z.array(z.number().int().min(0).max(6)), scheduleTime: z.string().regex(/^\d{2}:00$/).nullable() }`
+- Persists via `prisma.user.update` and returns the updated user
+- Files changed: `autovagas/server/routers/user.ts`
+---
+
+## 2026-04-03 - US-005
+- Already implemented: `triggerPipeline` in `application.ts` already wraps the quota check in `if (user.plan === Plan.FREE)` — PLUS/PRO always allowed
+- No code changes needed; marked as passes: true
+---
+
+## 2026-04-03 - US-006
+- Created `autovagas/lib/plans.ts` exporting `PLANS` array (FREE/PLUS/PRO with id, name, price, dailyQuota, features)
+- Removed inline PLANS from `server/routers/billing.ts` — now imports from `@/lib/plans`
+- Removed inline PLANS from `app/page.tsx` (was marked as "mirrors billing router PLANS") — now imports from `@/lib/plans`
+- Files changed: `autovagas/lib/plans.ts` (new), `autovagas/server/routers/billing.ts`, `autovagas/app/page.tsx`
+- **Learnings for future iterations:**
+  - Do NOT use `as const` on PLANS — `app/planos/page.tsx` has `interface Plan { features: string[] }` which is mutable and incompatible with readonly tuple types from `as const`.
+---
+
+## 2026-04-03 - US-007
+- Extracted `calculateSkillMatch(userSkills, requirements)` function inside `runMatching` in `workers/matching.ts`
+- Returns `{ matched, missed, score }` — `score` is `(matched.length / requirements.length) * 100` or 100 if requirements is empty
+- Replaced two separate inline skill computation blocks with single call to `calculateSkillMatch`
+- Files changed: `autovagas/workers/matching.ts`
+---
+
+## 2026-04-03 - US-008
+- Added `take: 100` and `orderBy: { createdAt: 'desc' }` to `applicationLog.findMany` in `getLogs` query in `application.ts`
+- Files changed: `autovagas/server/routers/application.ts`
+---
+
+## 2026-04-03 - US-009
+- Created `autovagas/middleware.ts` using `createServerClient` from `@supabase/ssr` (same package as `lib/supabase-server.ts`)
+- Protected routes: `/dashboard`, `/vagas`, `/perfil`, `/planos` — redirects to `/sign-in` if no session
+- Uses request.cookies.getAll() and response.cookies.set() pattern for middleware context
+- Files changed: `autovagas/middleware.ts` (new)
+---
+
+## 2026-04-03 - US-010
+- In `lib/email.ts`: catch block now logs `console.error('[email] Failed to send:', payload.template, err)` (includes template name)
+- In `workers/apply.ts`: replaced all 3 `void sendEmail(...)` calls with `await sendEmail(...).catch(err => console.error('[apply] email failed:', err))`
+- Files changed: `autovagas/lib/email.ts`, `autovagas/workers/apply.ts`
+---
+
+## 2026-04-03 - US-011
+- Added `ScheduleSection` component to `app/dashboard/page.tsx` immediately below the automation card
+- 7 day toggle buttons (Dom/Seg/Ter/Qua/Qui/Sex/Sáb), multi-select, active color `#b5ff4e`
+- `<input type="time" step={3600}>` for hour selection
+- Pre-populated from `profile.scheduleDays` / `profile.scheduleTime`; defaults to `[1,3,5]` + `'08:00'` if null
+- "Próxima execução" badge calculated in `nextExecution()` helper using local time (approximation for display)
+- "Salvar agendamento" calls `user.updateSchedule` mutation; success/error shown via shared toast state
+- Whole section gets `opacity: 0.5` + `pointer-events: none` when `paused = true`
+- Files changed: `autovagas/app/dashboard/page.tsx`
+---
+
+## 2026-04-03 - US-012
+- Added `plan` prop to `TopNav` component
+- `triggerTooltip`: `'Busca manual (1x por dia)'` for Free plan, `'Buscar vagas agora'` for Plus/Pro
+- Applied via `title={triggerTooltip}` on the "Buscar Vagas" button
+- Files changed: `autovagas/app/dashboard/page.tsx`
+---
+
+## 2026-04-03 - US-013
+- Created `app/dashboard/error.tsx`, `app/vagas/error.tsx`, `app/perfil/error.tsx`
+- Each is a `'use client'` Next.js App Router error boundary with props `{ error: Error, reset: () => void }`
+- Displays "Algo deu errado. Tente recarregar a página." with "Recarregar" button calling `reset()`
+- Dark theme: bg `#111`, text `#e5e5e5`, button accent `#b5ff4e`
+- Files changed: `autovagas/app/dashboard/error.tsx` (new), `autovagas/app/vagas/error.tsx` (new), `autovagas/app/perfil/error.tsx` (new)
+---
