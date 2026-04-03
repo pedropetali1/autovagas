@@ -1,4 +1,4 @@
-import { Worker, Queue, type Job } from 'bullmq'
+import { Worker, type Job } from 'bullmq'
 import { prisma } from '@/lib/prisma'
 import { ApplicationStatus, LogAction } from '@prisma/client'
 
@@ -8,8 +8,6 @@ const connection = {
   host: process.env.REDIS_HOST ?? 'localhost',
   port: Number(process.env.REDIS_PORT ?? 6379),
 }
-
-export const applyQueue = new Queue('apply', { connection })
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -112,11 +110,11 @@ async function runMatching(userId: string, jobIds: string[]): Promise<void> {
     })
   }
 
-  // 5. Sort by matchScore descending, select top N = dailyQuota
+  // 5. Sort by matchScore descending, select top 5 for user review
   scored.sort((a, b) => b.score - a.score)
-  const selected = scored.slice(0, user.dailyQuota)
+  const selected = scored.slice(0, 5)
 
-  console.log(`[matching] Selected ${selected.length} of ${scored.length} qualifying jobs`)
+  console.log(`[matching] Selected top ${selected.length} of ${scored.length} qualifying jobs for user review`)
 
   // 6. Create MATCH ApplicationLog for each evaluated job (all that passed filters)
   for (const item of scored) {
@@ -144,16 +142,11 @@ async function runMatching(userId: string, jobIds: string[]): Promise<void> {
       where: { id: { in: skippedIds } },
       data: { status: ApplicationStatus.SKIPPED },
     })
-    console.log(`[matching] Marked ${skippedIds.length} applications as SKIPPED (dailyQuota=${user.dailyQuota})`)
+    console.log(`[matching] Marked ${skippedIds.length} applications as SKIPPED`)
   }
 
-  // 8. Enqueue apply job with selected applicationIds
-  const applicationIds = selected.map((s) => s.applicationId)
-
-  if (applicationIds.length > 0) {
-    await applyQueue.add('apply', { applicationIds })
-    console.log(`[matching] Enqueued apply job for ${applicationIds.length} applications`)
-  }
+  // Selected applications stay PENDING — user will choose which to apply from /vagas
+  console.log(`[matching] ${selected.length} applications are PENDING user selection`)
 }
 
 // ─── Worker ───────────────────────────────────────────────────────────────────
@@ -170,5 +163,9 @@ export const matchingWorker = new Worker<MatchingJobData>(
 )
 
 matchingWorker.on('failed', (job, err) => {
-  console.error(`[matching] Job ${job?.id} failed:`, err)
+  const data = job?.data as MatchingJobData | undefined
+  console.error(
+    `[matching] Job ${job?.id} failed (userId=${data?.userId ?? 'unknown'}, jobIds=${data?.jobIds.length ?? 0}): ${err.message}`,
+    err,
+  )
 })

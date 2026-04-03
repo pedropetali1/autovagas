@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { TRPCError } from '@trpc/server'
 import { createTRPCRouter, protectedProcedure } from '@/server/trpc'
-import { ApplicationStatus } from '@prisma/client'
+import { ApplicationStatus, Plan } from '@prisma/client'
 import { sendEmail } from '@/lib/email'
 import { scraperQueue, matchingQueue, applyQueue } from '@/lib/queues'
 
@@ -142,11 +142,45 @@ export const applicationRouter = createTRPCRouter({
     if (!user.desiredRole) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Preencha o cargo desejado no perfil.' })
     if (!user.cvUrl) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Faça o upload do seu CV no perfil.' })
     if (user._count.skills < 3) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cadastre pelo menos 3 skills no perfil.' })
-    if (user.automationPaused) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Reative a automação antes de buscar vagas.' })
+
+    // Free plan: 1 pipeline run per day
+    if (user.plan === Plan.FREE) {
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      if (user.lastPipelineRunAt && user.lastPipelineRunAt >= todayStart) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'PIPELINE_LIMIT_REACHED' })
+      }
+    }
+
+    await ctx.prisma.user.update({
+      where: { id: ctx.user.id },
+      data: { lastPipelineRunAt: new Date() },
+    })
 
     await scraperQueue.add('scrape', { userId: ctx.user.id })
     return { queued: true }
   }),
+
+  applySelected: protectedProcedure
+    .input(z.object({ applicationIds: z.array(z.string()).min(1).max(10) }))
+    .mutation(async ({ ctx, input }) => {
+      const apps = await ctx.prisma.application.findMany({
+        where: {
+          id: { in: input.applicationIds },
+          userId: ctx.user.id,
+          status: ApplicationStatus.PENDING,
+        },
+        select: { id: true },
+      })
+
+      if (apps.length === 0) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Nenhuma candidatura válida selecionada.' })
+      }
+
+      const validIds = apps.map((a) => a.id)
+      await applyQueue.add('apply', { applicationIds: validIds })
+      return { queued: true, count: validIds.length }
+    }),
 
   markViewed: protectedProcedure
     .input(z.object({ applicationId: z.string() }))

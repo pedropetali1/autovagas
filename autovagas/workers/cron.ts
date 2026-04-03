@@ -111,5 +111,5 @@ export const cronWorker = new Worker(
 )
 
 cronWorker.on('failed', (job, err) => {
-  console.error(`[cron] Job ${job?.id} failed:`, err)
+  console.error(`[cron] Job ${job?.id} (name=${job?.name ?? 'unknown'}) failed: ${err.message}`, err)
 })

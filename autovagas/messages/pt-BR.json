@@ -11,7 +11,7 @@
     "close": "Fechar"
   },
   "status": {
-    "PENDING": "Pendente",
+    "PENDING": "Para aplicar",
     "APPLYING": "Candidatando",
     "SENT": "Enviada",
     "FAILED": "Falhou",

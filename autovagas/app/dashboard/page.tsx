@@ -198,8 +198,15 @@ export default function DashboardPage() {
 
   // ── Trigger pipeline ─────────────────────────────────────────────────────────
   const triggerPipeline = trpc.application.triggerPipeline.useMutation({
-    onSuccess: () => setToast('Pipeline iniciado! As vagas aparecerão em alguns minutos.'),
-    onError: (e) => setToast(e.message),
+    onSuccess: () => setToast('Busca iniciada! As vagas aparecerão em alguns minutos.'),
+    onError: (e) => {
+      if (e.message === 'PIPELINE_LIMIT_REACHED') {
+        setToast('Limite diário atingido. Faça upgrade para continuar.')
+        setTimeout(() => router.push('/planos'), 2500)
+      } else {
+        setToast(e.message)
+      }
+    },
   })
 
   // ── Automation toggle ────────────────────────────────────────────────────────
@@ -239,8 +246,7 @@ export default function DashboardPage() {
           {pipelineStatus && (() => {
             const active = (pipelineStatus.scraper.active ?? 0) + (pipelineStatus.matching.active ?? 0) + (pipelineStatus.apply.active ?? 0)
             const waiting = (pipelineStatus.scraper.waiting ?? 0) + (pipelineStatus.matching.waiting ?? 0) + (pipelineStatus.apply.waiting ?? 0)
-            const failed = (pipelineStatus.scraper.failed ?? 0) + (pipelineStatus.matching.failed ?? 0) + (pipelineStatus.apply.failed ?? 0)
-            if (active === 0 && waiting === 0 && failed === 0) return null
+            if (active === 0 && waiting === 0) return null
             return (
               <div className="flex items-center gap-4 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl px-5 py-3 text-sm">
                 <span className="text-[#666] font-medium">Pipeline:</span>
@@ -254,12 +260,6 @@ export default function DashboardPage() {
                   <span className="flex items-center gap-1.5 text-[#888]">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#555]" />
                     {waiting} na fila
-                  </span>
-                )}
-                {failed > 0 && (
-                  <span className="flex items-center gap-1.5 text-[#f87171]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#f87171]" />
-                    {failed} falharam
                   </span>
                 )}
                 <span className="text-[#444] text-xs ml-auto">atualiza a cada 5s</span>
@@ -448,7 +448,7 @@ export default function DashboardPage() {
               ) : !timeline?.length ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
                   <p className="text-[#444] text-sm">Nenhuma candidatura ainda</p>
-                  <p className="text-[#333] text-xs mt-1">A automação enviará vagas às 08:00</p>
+                  <p className="text-[#333] text-xs mt-1">Clique em "Buscar Vagas" para começar</p>
                 </div>
               ) : (
                 <ul className="space-y-3 flex-1 overflow-auto">

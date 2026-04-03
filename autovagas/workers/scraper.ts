@@ -307,14 +307,17 @@ async function runScraper(userId: string): Promise<void> {
   // Fallback to guest API if Playwright failed or returned 0 results (likely blocked)
   if (lastError || jobs.length === 0) {
     if (jobs.length === 0) {
-      console.warn('[scraper] Playwright returned 0 jobs (likely blocked) — falling back to Guest API')
+      console.warn(`[scraper] Playwright returned 0 jobs for user ${userId} (desiredRole="${user.desiredRole}") — falling back to Guest API`)
     } else {
-      console.warn('[scraper] All Playwright attempts failed — falling back to Guest API')
+      console.warn(`[scraper] All Playwright attempts failed for user ${userId} (lastError=${lastError?.message}) — falling back to Guest API`)
     }
     jobs = await fetchViaGuestApi(user.desiredRole, maxJobs)
+    if (jobs.length === 0) {
+      console.error(`[scraper] Guest API also returned 0 jobs for user ${userId} (desiredRole="${user.desiredRole}") — no jobs to process`)
+    }
   }
 
-  console.log(`[scraper] Collected ${jobs.length} jobs for user ${userId}`)
+  console.log(`[scraper] Collected ${jobs.length} jobs for user ${userId} (desiredRole="${user.desiredRole}")`)
 
   // Upsert jobs and create SCRAPE logs
   const jobIds: string[] = []
@@ -395,5 +398,6 @@ export const scraperWorker = new Worker<ScraperJobData>(
 )
 
 scraperWorker.on('failed', (job, err) => {
-  console.error(`[scraper] Job ${job?.id} failed:`, err)
+  const userId = (job?.data as ScraperJobData | undefined)?.userId ?? 'unknown'
+  console.error(`[scraper] Job ${job?.id} failed (userId=${userId}): ${err.message}`, err)
 })

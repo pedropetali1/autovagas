@@ -49,10 +49,11 @@ model User {
   emailDigest       Boolean       @default(true)
   emailOnViewed     Boolean       @default(true)
   emailOnFailed     Boolean       @default(true)
-  automationPaused  Boolean       @default(false)
-  excludeCompanies  String[]      @default([])
-  minSalary         Float?
-  createdAt         DateTime      @default(now())
+  automationPaused    Boolean       @default(false)
+  lastPipelineRunAt   DateTime?
+  excludeCompanies    String[]      @default([])
+  minSalary           Float?
+  createdAt           DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
   skills            Skill[]
   applications      Application[]

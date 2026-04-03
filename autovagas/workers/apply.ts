@@ -305,7 +305,11 @@ async function applyEasyApply(
     } catch {
       // Try generic primary button
       const primaryBtn = page.locator('footer button[data-easy-apply-next-button], footer button.artdeco-button--primary')
-      await primaryBtn.first().click({ timeout: 10_000 })
+      try {
+        await primaryBtn.first().click({ timeout: 10_000 })
+      } catch {
+        return { success: false, failReason: 'SUBMIT_BUTTON_NOT_FOUND' }
+      }
     }
 
     // Wait for confirmation (success toast or modal close)
@@ -327,7 +331,7 @@ async function applyEasyApply(
     const message = err instanceof Error ? err.message : String(err)
 
     if (message.includes('Timeout') || message.includes('timeout')) {
-      return { success: false, failReason: 'TIMEOUT' }
+      return { success: false, failReason: `TIMEOUT: ${message.slice(0, 200)}` }
     }
 
     // Treat navigation/challenge errors as CAPTCHA
@@ -335,8 +339,8 @@ async function applyEasyApply(
       return { success: false, failReason: 'CAPTCHA' }
     }
 
-    // Re-throw unexpected errors
-    throw err
+    // Re-throw unexpected errors with context
+    throw new Error(`[applyEasyApply] applicationId=${applicationId} url=${jobUrl}: ${message}`)
   } finally {
     await browser.close()
   }
@@ -507,8 +511,8 @@ async function applyExternal(
         try {
           await submitButton.first().click({ timeout: 10_000 })
         } catch {
-          console.warn(`[apply] Could not find submit button on external form for ${applicationId}`)
-          return { success: false, failReason: 'TIMEOUT' }
+          console.warn(`[apply] Could not find submit button on external form for ${applicationId} (url=${currentUrl})`)
+          return { success: false, failReason: 'SUBMIT_BUTTON_NOT_FOUND' }
         }
 
         // Wait for submission confirmation
@@ -530,7 +534,7 @@ async function applyExternal(
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       if (message.includes('Timeout') || message.includes('timeout')) {
-        return { success: false, failReason: 'TIMEOUT' }
+        return { success: false, failReason: `TIMEOUT: ${message.slice(0, 200)}` }
       }
       throw err
     }
@@ -546,7 +550,7 @@ async function applyExternal(
     const message = err instanceof Error ? err.message : String(err)
 
     if (message.includes('Timeout') || message.includes('timeout')) {
-      return { success: false, failReason: 'TIMEOUT' }
+      return { success: false, failReason: `TIMEOUT: ${message.slice(0, 200)}` }
     }
 
     if (
@@ -557,7 +561,7 @@ async function applyExternal(
       return { success: false, failReason: 'CAPTCHA' }
     }
 
-    throw err
+    throw new Error(`[applyExternal] applicationId=${applicationId} url=${jobUrl}: ${message}`)
   } finally {
     await browser.close()
   }
@@ -662,14 +666,16 @@ async function runApply(applicationIds: string[]): Promise<void> {
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      console.error(`[apply] Unexpected error for ${applicationId}:`, err)
-      result = { success: false, failReason: 'TIMEOUT' }
+      const isTimeout = msg.includes('Timeout') || msg.includes('timeout')
+      const unexpectedFailReason = isTimeout ? 'TIMEOUT' : 'UNKNOWN_ERROR'
+      console.error(`[apply] Unexpected error for ${applicationId} (${application.job.applyType}): ${msg}`)
+      result = { success: false, failReason: unexpectedFailReason }
 
       await prisma.application.update({
         where: { id: applicationId },
         data: {
           status: ApplicationStatus.FAILED,
-          failReason: 'TIMEOUT',
+          failReason: unexpectedFailReason,
           errorLog: msg,
         },
       })
@@ -678,7 +684,7 @@ async function runApply(applicationIds: string[]): Promise<void> {
         data: {
           applicationId,
           action: LogAction.SUBMIT,
-          detail: { reason: 'TIMEOUT', error: msg },
+          detail: { reason: unexpectedFailReason, error: msg },
         },
       })
 
@@ -697,7 +703,7 @@ async function runApply(applicationIds: string[]): Promise<void> {
             userName: digestUser.name ?? digestUser.email,
             jobTitle: application.job.title,
             company: application.job.company,
-            failReason: 'TIMEOUT',
+            failReason: unexpectedFailReason,
             directUrl: null,
           },
         })
@@ -824,5 +830,9 @@ export const applyWorker = new Worker<ApplyJobData>(
 )
 
 applyWorker.on('failed', (job, err) => {
-  console.error(`[apply] Job ${job?.id} failed:`, err)
+  const applicationIds = (job?.data as ApplyJobData | undefined)?.applicationIds ?? []
+  console.error(
+    `[apply] Job ${job?.id} failed (applicationIds=[${applicationIds.join(', ')}]): ${err.message}`,
+    err,
+  )
 })

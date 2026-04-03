@@ -1,0 +1,383 @@
+{
+  "project": "AutoVagas",
+  "branchName": "ralph/autovagas-mvp",
+  "description": "SaaS que automatiza candidaturas a vagas de emprego no LinkedIn: scraping anônimo via Playwright + proxies, matching por skills, candidatura automática (Easy Apply e formulários externos), notificações por e-mail via Resend e dashboard com logs completos e screenshots.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Schema base: enums, User, Skill, Job",
+      "description": "As a developer, I need the base database schema with enums and core models so subsequent stories can build on a stable foundation.",
+      "acceptanceCriteria": [
+        "Create Prisma enums: Plan (FREE, PLUS, PRO), ApplicationStatus (PENDING, APPLYING, SENT, FAILED, VIEWED), ApplyType (EASY_APPLY, EXTERNAL), LogAction (SCRAPE, MATCH, FILL_FORM, SUBMIT, SCREENSHOT)",
+        "Create model User with fields: id (cuid), clerkId (unique), email (unique), name, phone?, zipCode?, linkedinUrl?, desiredRole?, cvUrl?, plan (default FREE), dailyQuota (default 1), emailDigest (default true), emailOnViewed (default true), emailOnFailed (default true), automationPaused (default false), excludeCompanies String[] (default []), minSalary?, createdAt, updatedAt; relations: skills[], applications[]",
+        "Create model Skill with fields: id (cuid), name, userId; relation to User (cascade delete); @@unique([name, userId]); @@index([userId])",
+        "Create model Job with fields: id (cuid), title, company, location?, salary?, description?, linkedinUrl (unique), requirements String[], remote (default false), applyType (default EASY_APPLY); relation: applications[]; @@index([linkedinUrl])",
+        "Run prisma migrate dev successfully",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Implemented via pure-JS schema engine stub (schema-engine.mjs) using @prisma/prisma-schema-wasm for DMMF + PGlite. Migration SQL generated from DMMF. All AC verified."
+    },
+    {
+      "id": "US-002",
+      "title": "Schema: Application e ApplicationLog",
+      "description": "As a developer, I need the Application and ApplicationLog models to track candidature state and pipeline audit trail.",
+      "acceptanceCriteria": [
+        "Create model Application with fields: id (cuid), userId, jobId, status (default PENDING), matchScore Float (default 0), appliedAt DateTime?, errorLog?, failReason?, directUrl?; relations: user (cascade delete), job, logs ApplicationLog[]; @@unique([userId, jobId]); @@index([userId, status]); @@index([createdAt])",
+        "Create model ApplicationLog with fields: id (cuid), applicationId, action LogAction, detail Json?, screenshotUrl?; relation to Application (cascade delete); @@index([applicationId]); @@index([createdAt])",
+        "Run prisma migrate dev successfully with both new models",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Replaced placeholder Application model with full definition; added ApplicationLog model. Missing indexes from schema-engine regex bug were manually added to migration SQL."
+    },
+    {
+      "id": "US-003",
+      "title": "Clerk webhook: sincronizar usuário no banco",
+      "description": "As the system, I need to sync Clerk user creation and updates to the Prisma User table so all downstream features have a valid user record.",
+      "acceptanceCriteria": [
+        "Create route handler POST /api/webhooks/clerk that validates Svix signature using CLERK_WEBHOOK_SECRET env var",
+        "On event user.created: upsert User record with clerkId, email, name from Clerk payload",
+        "On event user.updated: update name and email in User record",
+        "Return 200 on success, 400 on invalid signature, 500 on DB error",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Created Prisma client singleton at lib/prisma.ts. Created POST /api/webhooks/clerk route handler with Svix signature verification. Handles user.created (upsert) and user.updated (update) events. Returns 200/400/500 as required."
+    },
+    {
+      "id": "US-004",
+      "title": "tRPC setup e router user: getProfile, updateProfile, skills",
+      "description": "As a developer, I need the tRPC infrastructure and the user router implemented so the frontend can read and update user profiles and skills.",
+      "acceptanceCriteria": [
+        "Setup tRPC with Next.js App Router (createTRPCRouter, protectedProcedure using Clerk auth)",
+        "user.getProfile: returns full User record (with skills[]) for the authenticated user",
+        "user.updateProfile: accepts name, phone, zipCode, linkedinUrl, desiredRole, minSalary; updates and returns User",
+        "user.addSkill: accepts name string; creates Skill record; returns updated skills[]",
+        "user.removeSkill: accepts skill id; deletes record; returns updated skills[]",
+        "user.updateNotificationPrefs: accepts emailDigest, emailOnViewed, emailOnFailed booleans; updates User",
+        "user.toggleAutomation: toggles User.automationPaused boolean; returns new value",
+        "user.addExcludeCompany: adds company name to User.excludeCompanies[]; returns updated array",
+        "user.removeExcludeCompany: removes company name from User.excludeCompanies[]; returns updated array",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Installed @trpc/server v11, @trpc/client, @trpc/react-query, @tanstack/react-query, zod, @clerk/nextjs v7, superjson. Created server/trpc.ts with createTRPCContext (uses Clerk auth()), protectedProcedure middleware that enforces auth and loads user from DB. Created server/routers/user.ts with all 9 procedures. Created server/routers/_app.ts as root router. Created app/api/trpc/[trpc]/route.ts using fetchRequestHandler. Typecheck passes."
+    },
+    {
+      "id": "US-005",
+      "title": "tRPC router application: list, stats, timeline, getLogs",
+      "description": "As a developer, I need the application router so the dashboard and vagas pages can query candidature data.",
+      "acceptanceCriteria": [
+        "application.list: accepts optional status filter and pagination cursor; returns paginated Applications with nested Job data (title, company, location, salary, applyType); ordered by createdAt desc",
+        "application.getStats: returns object { total, sent, failed, avgScore, viewedCount } for the authenticated user",
+        "application.getTimeline: returns last 10 Applications with Job.title, Job.company, status, matchScore, appliedAt",
+        "application.getLogs: accepts applicationId; verifies ownership; returns all ApplicationLog entries ordered by createdAt asc",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Created server/routers/application.ts with 4 procedures: list (cursor pagination + optional status filter, nested Job data), getStats (parallel aggregate/count queries), getTimeline (last 10 with Job.title/company via select), getLogs (ownership verification + ordered asc). Registered applicationRouter in _app.ts. Typecheck passes."
+    },
+    {
+      "id": "US-006",
+      "title": "tRPC router billing + Stripe webhooks",
+      "description": "As a developer, I need the billing router and Stripe webhook handler so users can subscribe to paid plans.",
+      "acceptanceCriteria": [
+        "billing.getPlans: returns static array of 3 plans with id, name, price (BRL), dailyQuota, features[]",
+        "billing.createCheckoutSession: accepts plan ('PLUS' | 'PRO'); creates Stripe Checkout Session with price ID from env; returns { url }",
+        "billing.getSubscription: returns User's current plan and dailyQuota",
+        "Create route handler POST /api/webhooks/stripe that validates Stripe signature with STRIPE_WEBHOOK_SECRET",
+        "On checkout.session.completed: update User.plan and User.dailyQuota based on purchased price ID",
+        "On customer.subscription.deleted: reset User.plan = FREE, User.dailyQuota = 1",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Installed stripe@20.4.1. Created server/routers/billing.ts with 3 procedures: getPlans (static array of 3 plans), createCheckoutSession (Stripe Checkout Session with price ID from env), getSubscription (returns plan + dailyQuota). Registered billingRouter in _app.ts. Created app/api/webhooks/stripe/route.ts: validates Stripe signature, handles checkout.session.completed (update plan+dailyQuota from priceId→PLAN_CONFIG map), customer.subscription.deleted (reset to FREE/1). API version must be '2026-02-25.clover' for stripe@20.4.1. Typecheck passes."
+    },
+    {
+      "id": "US-007",
+      "title": "Supabase Storage: upload de CV e URL pré-assinada",
+      "description": "As a user, I need to upload my CV PDF so the system can attach it to job applications.",
+      "acceptanceCriteria": [
+        "Create tRPC mutation user.getUploadUrl: generates Supabase Storage presigned upload URL for path cvs/{userId}/cv.pdf",
+        "Create tRPC mutation user.confirmCvUpload: after client uploads to presigned URL, saves the public URL in User.cvUrl",
+        "Uploading a new file overwrites the previous one at the same path",
+        "Supabase Storage bucket 'cvs' has RLS policy: only the file owner can read/write their own file",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "Installed @supabase/supabase-js. Created lib/supabase.ts with service-role client singleton. Added user.getUploadUrl mutation (createSignedUploadUrl with upsert:true for cvs/{userId}/cv.pdf) and user.confirmCvUpload mutation (getPublicUrl + update User.cvUrl). RLS policy for bucket 'cvs' documented in lib/supabase.ts comment. Typecheck passes."
+    },
+    {
+      "id": "US-008",
+      "title": "Página Perfil: dados pessoais, skills e upload CV",
+      "description": "As a user, I want to fill in my personal data, manage my skills, and upload my CV on the profile page.",
+      "acceptanceCriteria": [
+        "Route /perfil renders profile form with fields: name, phone, zipCode, linkedinUrl, desiredRole, minSalary",
+        "Form saves via user.updateProfile mutation; shows toast 'Perfil salvo' on success",
+        "Skills section shows existing skills as removable tags; input with add button creates new skill via user.addSkill",
+        "Minimum 3 skills required notice shown when user has fewer than 3 skills",
+        "CV upload section: file input accepts only .pdf (max 5MB); shows current CV filename and upload date if exists",
+        "Uploading new CV calls user.getUploadUrl, uploads to Supabase Storage, then calls user.confirmCvUpload",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "Created lib/trpc.tsx with createTRPCReact<AppRouter>(). Created app/providers.tsx with ClerkProvider + QueryClientProvider + tRPC.Provider (httpBatchLink + superjson). Updated app/layout.tsx to wrap children with Providers. Created app/perfil/page.tsx: profile form (name, phone, zipCode, linkedinUrl, desiredRole, minSalary) saved via user.updateProfile with toast 'Perfil salvo'; skills section with removable tags + add input via user.addSkill/removeSkill; <3 skills warning; CV upload section (PDF only, max 5MB) via getUploadUrl → PUT → confirmCvUpload. Skeleton loaders while data loads. Typecheck passes."
+    },
+    {
+      "id": "US-009",
+      "title": "Página Perfil: notificações e filtros excludentes",
+      "description": "As a user, I want to configure email notification preferences and exclusion filters (companies, minimum salary) on my profile.",
+      "acceptanceCriteria": [
+        "Profile page has 'Notificações' section with 3 toggles: 'Resumo diário', 'Alerta quando vaga me visualizar', 'Alerta quando candidatura falhar'; saves via user.updateNotificationPrefs",
+        "Profile page has 'Filtros' section with field to add companies to exclude; renders as removable tags; saves via user.addExcludeCompany / user.removeExcludeCompany",
+        "minSalary text field in Filtros section saves via user.updateProfile",
+        "All sections show skeleton loaders while data is loading",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": "Added Notificações section with 3 Toggle components (emailDigest, emailOnViewed, emailOnFailed) saved via user.updateNotificationPrefs. Added Filtros section with minSalary field (saves via user.updateProfile) and exclude companies input with removable tags (addExcludeCompany/removeExcludeCompany). All sections show skeleton loaders while loading. Typecheck passes."
+    },
+    {
+      "id": "US-010",
+      "title": "Dashboard: métricas, timeline e toggle de automação",
+      "description": "As a logged-in user, I want to see my application metrics, recent activity timeline, and control automation from the dashboard.",
+      "acceptanceCriteria": [
+        "Route /dashboard renders greeting with user name",
+        "Plan card shows: current plan name, dailyQuota, how many applications were made today",
+        "4 metric cards: total applications, sent successfully, fail rate (%), average match score",
+        "Activity timeline lists last 10 applications: company name, job title, status badge, timestamp",
+        "Toggle 'Pausar automação' calls user.toggleAutomation; when paused shows amber badge 'Automação pausada' on the toggle and in page header",
+        "All data loads via tRPC queries with skeleton loaders while fetching",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": "Created app/dashboard/page.tsx with: greeting using user.name, PlanCard (plan name + dailyQuota + todayCount), 4 metric cards (total, sent, fail rate %, avg score), AutomationToggle (user.toggleAutomation with amber badge when paused + header badge), Timeline (application.getTimeline last 10 with StatusBadge + formatted timestamp). Extended application.getStats to include todayCount via createdAt >= today 00:00. All sections use skeleton loaders. Typecheck passes."
+    },
+    {
+      "id": "US-011",
+      "title": "Página Vagas: listagem com filtros e match score",
+      "description": "As a user, I want to browse the jobs found for me with compatibility scores and filter by application status.",
+      "acceptanceCriteria": [
+        "Route /vagas renders paginated list of Applications (20 per page) with Job data",
+        "Each card shows: job title, company, location, salary (if available), applyType badge (Easy Apply = blue, Externo = gray), status badge, match score percentage and color bar (green ≥70%, amber 40-69%, red <40%)",
+        "Status filter dropdown: Todas / Pendente / Candidatando / Enviada / Falhou / Visualizada",
+        "Cards with status FAILED and failReason FORM_NOT_SUPPORTED show button 'Candidatar manualmente' that opens directUrl in new tab",
+        "When automation is paused, yellow banner 'Automação pausada' appears at top of page",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": "Created app/vagas/page.tsx: paginated list via trpc.application.list.useInfiniteQuery (20/page, cursor-based), status filter dropdown (Todas/Pendente/Candidatando/Enviada/Falhou/Visualizada), ApplicationCard with job title/company/location/salary, ApplyTypeBadge (Easy Apply=blue, Externo=gray), StatusBadge, MatchScoreBar (green≥70%, amber 40-69%, red<40%), 'Candidatar manualmente' link for FAILED+FORM_NOT_SUPPORTED, automation paused yellow banner, skeleton loaders, 'Carregar mais' load-more button. Typecheck passes."
+    },
+    {
+      "id": "US-012",
+      "title": "Modal de detalhe da candidatura com ApplicationLog",
+      "description": "As a user, I want to see the full audit log of each application — with timestamps, actions, and form screenshot — for full transparency.",
+      "acceptanceCriteria": [
+        "Clicking a job card on /vagas opens a modal (or slide-over) with: job title, company, status badge, matchScore, appliedAt",
+        "Modal renders a vertical timeline of ApplicationLog entries: icon per action type, formatted timestamp, detail JSON rendered as readable key-value pairs",
+        "Entries with action SCREENSHOT show a clickable thumbnail that opens screenshotUrl in a lightbox or new tab",
+        "When failReason is FORM_NOT_SUPPORTED, modal shows explanation 'Formulário externo não mapeado' and button 'Candidatar manualmente' with directUrl",
+        "Log timeline loads via application.getLogs query with skeleton loader",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": "Made ApplicationCard clickable (role=button, onClick/onKeyDown). Added ApplicationDetailModal component: header with job title/company/close button, meta row with StatusBadge/matchScore/appliedAt, FORM_NOT_SUPPORTED amber notice with 'Candidatar manualmente' link, and LogTimeline component. LogTimeline calls trpc.application.getLogs.useQuery, shows skeleton while loading, renders vertical timeline with emoji icons per LogAction (SCRAPE/MATCH/FILL_FORM/SUBMIT/SCREENSHOT), formatted pt-BR timestamps, DetailKeyValue for detail JSON, and clickable screenshot thumbnails. Added appliedAt to ApplicationItem type. Typecheck passes."
+    },
+    {
+      "id": "US-013",
+      "title": "Página Planos: cards de pricing e Stripe Checkout",
+      "description": "As a user, I want to view available plans and subscribe to a paid plan to increase my daily application quota.",
+      "acceptanceCriteria": [
+        "Route /planos renders 3 plan cards: Free (R$0, 1 vaga/dia), Plus (R$29/mês, 10 vagas/dia), Pro (R$59/mês, 20 vagas/dia)",
+        "Current plan is highlighted with badge 'Seu plano'",
+        "Clicking 'Assinar' on Plus or Pro calls billing.createCheckoutSession and redirects to returned Stripe Checkout URL",
+        "After successful payment, user is redirected to /dashboard with toast 'Plano atualizado com sucesso'",
+        "Downgraded users (subscription deleted webhook) see their quota reflected on next page load",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 13,
+      "passes": true,
+      "notes": "Created app/planos/page.tsx: 3 plan cards from billing.getPlans with billing.getSubscription to highlight current plan with 'Seu plano' badge. Plus/Pro cards have 'Assinar' button that calls billing.createCheckoutSession and redirects to Stripe Checkout URL. Free and current plan cards show disabled 'Plano atual' button. Updated app/dashboard/page.tsx: added useSearchParams to detect ?checkout=success on redirect from Stripe, shows toast 'Plano atualizado com sucesso' and clears the param via router.replace. Downgraded users see updated quota on next page load (handled by existing Stripe webhook). Typecheck passes."
+    },
+    {
+      "id": "US-014",
+      "title": "Landing page pública (SSG)",
+      "description": "As a visitor, I want to understand the product and start registration to automate my job applications.",
+      "acceptanceCriteria": [
+        "Route / renders static landing page (SSG, no dynamic data)",
+        "Hero section: headline (Playfair Display font), subtitle, 'Começar grátis' CTA button",
+        "Como funciona section: 3 illustrated steps (Busca vagas, Analisa compatibilidade, Candidata automaticamente)",
+        "Stats section: at least 3 stats cards (ex: '10.000+ candidaturas enviadas')",
+        "Pricing section: same 3 plan cards as /planos",
+        "Final CTA section with signup button linking to Clerk signup",
+        "Page uses design system colors (#fafaf8 background, DM Sans body, border #e8e7e0)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 14,
+      "passes": true,
+      "notes": "Replaced placeholder page.tsx with full SSG landing page. Hero section with Playfair Display headline + DM Sans body + 'Começar grátis' CTA. 'Como funciona' section with 3 illustrated steps. Stats section with 3 cards. Pricing section with hardcoded PLANS array (mirrors billing router). Final CTA with Clerk /sign-up link. Design system colors: #fafaf8 background, border #e8e7e0. Both Google Fonts loaded via next/font/google with CSS variables. Typecheck passes."
+    },
+    {
+      "id": "US-015",
+      "title": "Worker scraper: coleta anônima de vagas via Playwright",
+      "description": "As the system, I need the scraper worker to collect LinkedIn jobs using anonymous Playwright sessions with rotating proxies so user credentials are never stored.",
+      "acceptanceCriteria": [
+        "BullMQ worker 'scraper' consumes jobs from queue 'scraper'",
+        "Each job execution creates a new Playwright browser context with randomized fingerprint: userAgent, viewport (1280–1920px random width), timezone (America/Sao_Paulo), locale (pt-BR)",
+        "Requests are routed through residential proxy (config via PROXY_URL env var in format http://user:pass@host:port)",
+        "Rate limit: max 2 requests per second per session (implemented via delay helper)",
+        "On captcha or IP block detection (HTTP 429, redirect to challenge page): exponential backoff 30s → 60s → 120s with proxy rotation between attempts",
+        "After 3 failed attempts: fallback to LinkedIn Jobs Guest API endpoint with desiredRole as query param",
+        "Collected jobs are upserted by linkedinUrl (dedup); applyType is set based on presence of Easy Apply button",
+        "Maximum jobs collected per run: User.dailyQuota × 3",
+        "Creates ApplicationLog entry with action SCRAPE for each collected job",
+        "Enqueues 'matching' job with { userId, jobIds[] } on completion",
+        "Typecheck passes"
+      ],
+      "priority": 15,
+      "passes": true,
+      "notes": "Created workers/scraper.ts: BullMQ Worker consuming 'scraper' queue. Playwright browser context with randomized userAgent/viewport/locale/timezone, optional PROXY_URL routing. Rate limit 500ms between requests (2 req/s max). Challenge detection (HTTP 429, /checkpoint, /authwall, /captcha) triggers exponential backoff (30s→60s→120s) + proxy rotation across 3 attempts. After 3 failures: fallback to LinkedIn Jobs Guest API HTML parser. Jobs upserted by linkedinUrl; applyType set by Easy Apply button presence. Application records created PENDING (upsert dedup). SCRAPE ApplicationLog per job. Enqueues 'matching' job with { userId, jobIds[] }. Exports scraperQueue + matchingQueue for cron (US-019). Typecheck passes."
+    },
+    {
+      "id": "US-016",
+      "title": "Worker matching: scoring e filtros excludentes",
+      "description": "As the system, I need the matching worker to calculate compatibility scores, apply exclusion filters, and select the top N jobs for candidature.",
+      "acceptanceCriteria": [
+        "BullMQ worker 'matching' consumes jobs from queue 'matching'",
+        "Discards jobs from companies in User.excludeCompanies[] (case-insensitive match)",
+        "Discards jobs where salary is present and below User.minSalary (when minSalary is set)",
+        "Calculates matchScore for each remaining job: (number of User skills found in Job.requirements) / Job.requirements.length × 100",
+        "Filters out jobs with matchScore < 40",
+        "Selects top N jobs by matchScore descending, where N = User.dailyQuota",
+        "Creates Application records with status PENDING for selected jobs (upsert, skip if already applied)",
+        "Creates ApplicationLog entry with action MATCH and detail { score, skillsMatched: string[], skillsMissed: string[] } for each evaluated job",
+        "Enqueues 'apply' job with { applicationIds[] } on completion",
+        "Typecheck passes"
+      ],
+      "priority": 16,
+      "passes": true,
+      "notes": "Created workers/matching.ts: BullMQ Worker consuming 'matching' queue. Loads user with skills. Filters out excluded companies (case-insensitive) and jobs below minSalary. Calculates matchScore = (skillsMatched / requirements.length) × 100 (100% when no requirements). Filters out matchScore < 40. Selects top N by score (N = dailyQuota). Upserts Application records with matchScore. Creates MATCH ApplicationLog with { score, skillsMatched, skillsMissed }. Exports applyQueue + enqueues 'apply' job with { applicationIds[] }. Typecheck passes."
+    },
+    {
+      "id": "US-017",
+      "title": "Worker apply: Easy Apply (modal LinkedIn)",
+      "description": "As the system, I need the apply worker to handle Easy Apply jobs by filling and submitting the LinkedIn quick-apply modal.",
+      "acceptanceCriteria": [
+        "BullMQ worker 'apply' consumes jobs from queue 'apply'",
+        "For each applicationId with Job.applyType = EASY_APPLY: set status → APPLYING, create ApplicationLog { action: FILL_FORM }",
+        "Playwright navigates to Job.linkedinUrl, clicks the 'Candidatar-se fácil' button",
+        "Fills modal fields: name (User.name), email (User.email), phone (User.phone), uploads CV from User.cvUrl",
+        "Takes screenshot of filled form, uploads to Supabase Storage at screenshots/{applicationId}/final.png, creates ApplicationLog { action: SCREENSHOT, screenshotUrl }",
+        "Submits form",
+        "On success: set status = SENT, appliedAt = now(), create ApplicationLog { action: SUBMIT, detail: { result: 'success' } }",
+        "On CAPTCHA or timeout after 60s: set status = FAILED, failReason = CAPTCHA or TIMEOUT, create ApplicationLog { action: SUBMIT, detail: { reason } }",
+        "Typecheck passes"
+      ],
+      "priority": 17,
+      "passes": true,
+      "notes": "Created workers/apply.ts: BullMQ Worker consuming 'apply' queue. Filters to EASY_APPLY jobs only (EXTERNAL handled by US-018). Sets status APPLYING + FILL_FORM log before attempting. Playwright navigates to linkedinUrl, clicks 'Candidatar-se fácil' button (multiple selector fallbacks), fills name/email/phone/CV fields, takes screenshot and uploads to Supabase Storage at screenshots/{applicationId}/final.png with SCREENSHOT log. Submits form (multiple selector fallbacks). On success: SENT + appliedAt + SUBMIT log { result: 'success' }. On challenge: CAPTCHA failReason. On timeout: TIMEOUT failReason. Both failures: FAILED status + SUBMIT log { reason }. Typecheck passes."
+    },
+    {
+      "id": "US-018",
+      "title": "Worker apply: formulários externos com heurísticas e fallback manual",
+      "description": "As the system, I need the apply worker to handle external application forms using field heuristics, with a graceful fallback when the form cannot be mapped.",
+      "acceptanceCriteria": [
+        "For each applicationId with Job.applyType = EXTERNAL: Playwright navigates to Job.linkedinUrl and follows the external redirect",
+        "Field detection heuristic: identify input fields by matching label text, name attr, id attr, and placeholder against known patterns (email, phone, name, resume/cv)",
+        "Calculate mapping ratio: mappedRequiredFields / totalRequiredFields",
+        "If mapping ratio < 0.70: set status = FAILED, failReason = FORM_NOT_SUPPORTED, directUrl = Job.linkedinUrl, create ApplicationLog { action: SUBMIT, detail: { reason: 'FORM_NOT_SUPPORTED', mappedFields: number, totalRequired: number } }",
+        "If mapping ratio >= 0.70: fill identified fields with User data, upload CV to file input if found, take screenshot, submit form",
+        "On successful submission: set status = SENT, appliedAt = now()",
+        "On CAPTCHA or timeout: set status = FAILED, failReason = CAPTCHA | TIMEOUT",
+        "Typecheck passes"
+      ],
+      "priority": 18,
+      "passes": true,
+      "notes": "Extended workers/apply.ts with applyExternal function and detectFields heuristic. detectFields scans all visible inputs and matches against FIELD_PATTERNS (name, email, phone, resume) via label text, name, id, placeholder, aria-label attributes. Computes mappingRatio = mappedRequired / totalRequired. If <0.70: FAILED with failReason=FORM_NOT_SUPPORTED, directUrl=job.linkedinUrl, SUBMIT log {reason, mappedFields, totalRequired}. If >=0.70: fills name/email/phone, uploads CV to file input, takes screenshot (Supabase Storage), submits form. On CAPTCHA: FAILED+CAPTCHA. On timeout: FAILED+TIMEOUT. On success: SENT+appliedAt. Updated runApply to branch on applyType (EASY_APPLY vs EXTERNAL). Typecheck passes."
+    },
+    {
+      "id": "US-019",
+      "title": "Cron diário: disparo do pipeline às 08h00 BRT",
+      "description": "As the system, I need a daily cron to enqueue scraper jobs for all eligible users at 08:00 BRT.",
+      "acceptanceCriteria": [
+        "BullMQ repeatable job configured with cron expression '0 11 * * *' (UTC = 08:00 BRT)",
+        "On each tick: queries all Users where cvUrl IS NOT NULL AND skills count >= 3 AND automationPaused = false",
+        "For each eligible user: checks if they already hit dailyQuota today (count of Applications with createdAt >= today 00:00 BRT); skips if quota reached",
+        "Enqueues one 'scraper' job per eligible user with { userId }",
+        "Logs structured output: { processed: N, skipped: N, reason: 'quota_reached' | 'paused' | 'incomplete_profile' }",
+        "Typecheck passes"
+      ],
+      "priority": 19,
+      "passes": true,
+      "notes": "Created workers/cron.ts: BullMQ Queue 'cron' with repeatable job '0 11 * * *' UTC (08:00 BRT) via setupCronJob(). Worker processes each tick by querying users where cvUrl IS NOT NULL AND automationPaused=false, then filters to users with >=3 skills. Computes today 00:00 BRT as UTC-3 offset. Checks each user's application count >= dailyQuota (quota_reached skip) or skips incomplete_profile users. Enqueues one 'scraper' job per eligible user. Logs { processed, skipped, reasons } stats. Typecheck passes."
+    },
+    {
+      "id": "US-020",
+      "title": "Notificações por e-mail: templates Resend (resumo, VIEWED, FAILED)",
+      "description": "As a developer, I need email templates and a Resend integration so users receive notifications about their application pipeline.",
+      "acceptanceCriteria": [
+        "Install and configure Resend SDK with RESEND_API_KEY env var and FROM_EMAIL env var",
+        "Create React Email template 'resumo-diario': receives { userName, totalAnalyzed, totalSent, totalFailed, failedApplications: { title, company, directUrl }[] }; renders summary in pt-BR with design system colors",
+        "Create React Email template 'alerta-viewed': receives { userName, jobTitle, company }; renders real-time alert in pt-BR",
+        "Create React Email template 'alerta-failed': receives { userName, jobTitle, company, failReason, directUrl? }; renders failure alert with 'Candidatar manualmente' button when directUrl is present",
+        "Create sendEmail helper that wraps Resend SDK calls with error handling (log error, do not throw)",
+        "Typecheck passes"
+      ],
+      "priority": 20,
+      "passes": true,
+      "notes": "Installed resend, @react-email/components, react-email. Created emails/resumo-diario.tsx (daily summary with stats table and failed apps list), emails/alerta-viewed.tsx (viewed alert), emails/alerta-failed.tsx (failure alert with FAIL_REASON_LABELS map and conditional 'Candidatar manualmente' button). Created lib/email.ts with sendEmail helper: discriminated union EmailPayload type for all 3 templates, wraps Resend SDK, logs errors but never throws. Uses RESEND_API_KEY and FROM_EMAIL env vars. Typecheck passes."
+    },
+    {
+      "id": "US-021",
+      "title": "Integração Resend: disparos pós-pipeline e evento VIEWED",
+      "description": "As the system, I need email dispatch logic wired into the pipeline and status-change events.",
+      "acceptanceCriteria": [
+        "After worker 'apply' finishes processing all applicationIds for a user: if User.emailDigest = true, call sendEmail with resumo-diario template passing pipeline stats",
+        "For each Application set to FAILED during apply worker: if User.emailOnFailed = true, call sendEmail with alerta-failed template",
+        "Create a tRPC mutation application.markViewed (or a webhook endpoint) that updates Application.status = VIEWED; if User.emailOnViewed = true, call sendEmail with alerta-viewed template",
+        "All email sends are fire-and-forget (non-blocking for pipeline); errors are logged but do not fail the worker job",
+        "Typecheck passes"
+      ],
+      "priority": 21,
+      "passes": true,
+      "notes": "Extended workers/apply.ts: tracks digestUser + totalSent/totalFailed/failedApplications[] across the loop; sends alerta-failed (fire-and-forget) per FAILED application when user.emailOnFailed=true; sends resumo-diario after loop when user.emailDigest=true. Added markViewed mutation to server/routers/application.ts: verifies ownership, sets status=VIEWED, sends alerta-viewed (fire-and-forget) when user.emailOnViewed=true. All email sends use void pattern for fire-and-forget. Typecheck passes."
+    },
+    {
+      "id": "US-022",
+      "title": "Internacionalização: next-intl pt-BR em toda a interface",
+      "description": "As a developer, I need all user-visible strings managed via next-intl so the interface is consistently in pt-BR and ready for future locales.",
+      "acceptanceCriteria": [
+        "Install and configure next-intl with locale pt-BR as default",
+        "Create messages/pt-BR.json with all string keys used across pages (landing, dashboard, perfil, vagas, planos)",
+        "Replace all hardcoded JSX strings in existing pages/components with useTranslations() calls",
+        "Error messages from tRPC mutations translated and shown via toast in pt-BR",
+        "Email templates already in pt-BR (no changes needed)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 22,
+      "passes": true,
+      "notes": "Installed next-intl@4.8.3. Created i18n/request.ts (getRequestConfig, fixed locale pt-BR, loads messages/pt-BR.json). Updated next.config.ts with createNextIntlPlugin. Created messages/pt-BR.json with all user-visible strings across all pages (common, status, applyType, logAction, landing, dashboard, perfil, vagas, planos namespaces). Updated app/layout.tsx to async + NextIntlClientProvider wrapping. Updated landing page.tsx to use getTranslations() (server component). Updated dashboard, perfil, vagas, planos pages to use useTranslations() (client components). Dynamic status/logAction labels resolved via explicit key mapping (TypeScript-safe pattern). Typecheck and lint pass."
+    }
+  ]
+}
