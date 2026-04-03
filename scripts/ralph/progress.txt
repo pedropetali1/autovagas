@@ -31,3 +31,16 @@ Started: Fri, Apr  3, 2026 12:58:27 PM
   - `todayStartUTC` in the helper is computed as `Date.UTC(brtYear, brtMonth, brtDate, 3, 0, 0, 0)` — the "+3h" offset converts BRT midnight back to UTC. No separate "before 03:00" check needed since `brtNow` already accounts for the offset.
   - `application.ts` was previously using local server time (`setHours`) for the quota check, not BRT — now correctly aligned.
 ---
+
+## 2026-04-03 - US-003
+- Replaced fixed daily cron (`0 11 * * *`) with hourly cron (`0 * * * *`) in `workers/cron.ts`
+- Added `await cronQueue.removeRepeatable('daily-pipeline', { pattern: '0 11 * * *' })` in `setupCronJob()` before registering new job
+- Changed Prisma query to filter `scheduleTime: hourStr` directly (only users whose schedule time matches current BRT hour)
+- Post-query filter also checks `u.scheduleDays.includes(dayOfWeek)` for the current BRT day of week
+- Renamed `runDailyPipeline` → `runHourlyPipeline` and updated worker log messages for clarity
+- Files changed: `autovagas/workers/cron.ts`
+- **Learnings for future iterations:**
+  - `cronQueue.removeRepeatable` uses `{ pattern: '...' }` (not `{ cron: '...' }`) to match the old job by its cron expression.
+  - Filtering `scheduleTime` in the Prisma `where` clause (DB-level) is more efficient than post-filtering; `scheduleDays` must be checked in JS since Prisma doesn't support array-contains on Int[] for all providers.
+  - Users without `scheduleTime` (null) are automatically excluded by the Prisma `scheduleTime: hourStr` filter since null !== any string.
+---
