@@ -7,6 +7,7 @@ Started: Fri, Apr  3, 2026 12:58:27 PM
 - Prisma migration history is corrupted: all 4 existing migrations try to create the same schema from scratch. Use `prisma db execute` + `prisma migrate resolve --applied` instead of `prisma migrate dev` for new migrations.
 - Typecheck: run `npx tsc --noEmit` from `autovagas/autovagas/` directory.
 - Prisma client regeneration: run `npx prisma generate` after schema changes.
+- BRT timezone helper is at `lib/timezone.ts` — use `getCurrentBRTTime()` for all BRT-based scheduling/quota logic.
 
 ## 2026-04-03 - US-001
 - Added `scheduleDays Int[] @default([1,2,3,4,5])` and `scheduleTime String?` to `User` model in `prisma/schema.prisma`
@@ -18,4 +19,15 @@ Started: Fri, Apr  3, 2026 12:58:27 PM
   - Migration history is broken (4 migrations all recreate the same schema). Never use `prisma migrate dev` — it fails on shadow DB. Always use `prisma db execute` + `prisma migrate resolve --applied`.
   - The working directory for npx commands must be `autovagas/autovagas/` (the nested Next.js project root).
   - Branch `ralph/scheduled-pipeline` was created from `ralph/autovagas-mvp` as it didn't exist.
+---
+
+## 2026-04-03 - US-002
+- Created `autovagas/lib/timezone.ts` exporting `getCurrentBRTTime()` returning `{ hourStr, dayOfWeek, todayStartUTC }`
+- BRT calculated as UTC-3 manually (no external libraries)
+- Replaced 8-line inline BRT block in `workers/cron.ts` with single `getCurrentBRTTime()` call
+- Replaced `setHours(0,0,0,0)` (local time) in `server/routers/application.ts` triggerPipeline with `todayStartUTC` from helper (now consistently BRT-based)
+- Files changed: `autovagas/lib/timezone.ts` (new), `autovagas/workers/cron.ts`, `autovagas/server/routers/application.ts`
+- **Learnings for future iterations:**
+  - `todayStartUTC` in the helper is computed as `Date.UTC(brtYear, brtMonth, brtDate, 3, 0, 0, 0)` — the "+3h" offset converts BRT midnight back to UTC. No separate "before 03:00" check needed since `brtNow` already accounts for the offset.
+  - `application.ts` was previously using local server time (`setHours`) for the quota check, not BRT — now correctly aligned.
 ---
