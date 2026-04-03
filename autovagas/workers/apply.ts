@@ -696,7 +696,7 @@ async function runApply(applicationIds: string[]): Promise<void> {
       })
 
       if (digestUser?.emailOnFailed) {
-        void sendEmail({
+        await sendEmail({
           template: 'alerta-failed',
           to: digestUser.email,
           props: {
@@ -706,7 +706,7 @@ async function runApply(applicationIds: string[]): Promise<void> {
             failReason: unexpectedFailReason,
             directUrl: null,
           },
-        })
+        }).catch((err) => console.error('[apply] email failed:', err))
       }
 
       continue
@@ -779,9 +779,9 @@ async function runApply(applicationIds: string[]): Promise<void> {
         directUrl,
       })
 
-      // Send alerta-failed email immediately (fire-and-forget)
+      // Send alerta-failed email immediately
       if (digestUser?.emailOnFailed) {
-        void sendEmail({
+        await sendEmail({
           template: 'alerta-failed',
           to: digestUser.email,
           props: {
@@ -791,7 +791,7 @@ async function runApply(applicationIds: string[]): Promise<void> {
             failReason,
             directUrl,
           },
-        })
+        }).catch((err) => console.error('[apply] email failed:', err))
       }
 
       console.warn(`[apply] Failed to apply to ${applicationId}: ${failReason}`)
@@ -800,7 +800,7 @@ async function runApply(applicationIds: string[]): Promise<void> {
 
   // Send daily digest email after all applications are processed
   if (digestUser?.emailDigest && applicationIds.length > 0) {
-    void sendEmail({
+    await sendEmail({
       template: 'resumo-diario',
       to: digestUser.email,
       props: {
@@ -810,7 +810,7 @@ async function runApply(applicationIds: string[]): Promise<void> {
         totalFailed,
         failedApplications,
       },
-    })
+    }).catch((err) => console.error('[apply] email failed:', err))
   }
 
   console.log(`[apply] Finished processing ${applicationIds.length} applications`)

@@ -81,6 +81,6 @@ export async function sendEmail(payload: EmailPayload): Promise<void> {
       console.error('[email] Resend error:', error)
     }
   } catch (err) {
-    console.error('[email] Failed to send email:', err)
+    console.error('[email] Failed to send:', payload.template, err)
   }
 }

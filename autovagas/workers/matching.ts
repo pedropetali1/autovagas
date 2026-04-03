@@ -44,6 +44,20 @@ async function runMatching(userId: string, jobIds: string[]): Promise<void> {
     skillsMissed: string[]
   }
 
+  function calculateSkillMatch(
+    userSkills: string[],
+    requirements: string[],
+  ): { matched: string[]; missed: string[]; score: number } {
+    if (requirements.length === 0) return { matched: [], missed: [], score: 100 }
+    const matched = userSkills.filter((skill) =>
+      requirements.some((req) => req.includes(skill) || skill.includes(req)),
+    )
+    const missed = requirements.filter(
+      (req) => !userSkills.some((skill) => req.includes(skill) || skill.includes(req)),
+    )
+    return { matched, missed, score: (matched.length / requirements.length) * 100 }
+  }
+
   const scored: ScoredJob[] = []
 
   for (const job of jobs) {
@@ -63,17 +77,7 @@ async function runMatching(userId: string, jobIds: string[]): Promise<void> {
 
     // 3. Calculate matchScore
     const requirements = job.requirements.map((r) => r.toLowerCase())
-    let matchScore: number
-
-    if (requirements.length === 0) {
-      // No requirements listed — treat as perfect match opportunity (100%)
-      matchScore = 100
-    } else {
-      const skillsMatched = userSkills.filter((skill) =>
-        requirements.some((req) => req.includes(skill) || skill.includes(req)),
-      )
-      matchScore = (skillsMatched.length / requirements.length) * 100
-    }
+    const { matched: skillsMatched, missed: skillsMissed, score: matchScore } = calculateSkillMatch(userSkills, requirements)
 
     // 4. Filter out jobs with matchScore < 40
     if (matchScore < 40) {
@@ -92,14 +96,6 @@ async function runMatching(userId: string, jobIds: string[]): Promise<void> {
         matchScore,
       },
     })
-
-    const requirements2 = job.requirements.map((r) => r.toLowerCase())
-    const skillsMatched = userSkills.filter((skill) =>
-      requirements2.some((req) => req.includes(skill) || skill.includes(req)),
-    )
-    const skillsMissed = requirements2.filter(
-      (req) => !userSkills.some((skill) => req.includes(skill) || skill.includes(req)),
-    )
 
     scored.push({
       jobId: job.id,

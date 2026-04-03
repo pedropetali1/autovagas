@@ -93,8 +93,9 @@ function ScoreRing({ pct }: { pct: number }) {
 }
 
 // ─── Top nav ──────────────────────────────────────────────────────────────────
-function TopNav({ name, onTrigger, triggering }: {
+function TopNav({ name, plan, onTrigger, triggering }: {
   name: string | undefined
+  plan: string
   onTrigger: () => void
   triggering: boolean
 }) {
@@ -104,6 +105,7 @@ function TopNav({ name, onTrigger, triggering }: {
     { href: '/vagas', label: 'Vagas' },
     { href: '/perfil', label: 'Perfil' },
   ]
+  const triggerTooltip = plan === 'Free' ? 'Busca manual (1x por dia)' : 'Buscar vagas agora'
   return (
     <header className="flex items-center justify-between px-8 py-4 border-b border-[#2a2a2a] shrink-0">
       <div className="flex items-center gap-6">
@@ -128,6 +130,7 @@ function TopNav({ name, onTrigger, triggering }: {
         <button
           onClick={onTrigger}
           disabled={triggering}
+          title={triggerTooltip}
           className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold bg-[#b5ff4e] text-[#111] hover:bg-[#c8ff6e] disabled:opacity-50 transition-colors"
         >
           {triggering ? (
@@ -160,6 +163,117 @@ function TopNav({ name, onTrigger, triggering }: {
         </div>
       </div>
     </header>
+  )
+}
+
+// ─── Schedule section ─────────────────────────────────────────────────────────
+const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+const DAY_FULL = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+
+function nextExecution(scheduleDays: number[], scheduleTime: string): string {
+  if (scheduleDays.length === 0 || !scheduleTime) return '—'
+  const [hourStr] = scheduleTime.split(':')
+  const hour = parseInt(hourStr, 10)
+  // Use local time as approximation for display purposes
+  const now = new Date()
+  for (let i = 0; i <= 7; i++) {
+    const candidate = new Date(now)
+    candidate.setDate(now.getDate() + i)
+    candidate.setHours(hour, 0, 0, 0)
+    if (candidate <= now) continue
+    const dow = candidate.getDay()
+    if (!scheduleDays.includes(dow)) continue
+    const dayName = DAY_FULL[dow]
+    const date = candidate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+    return `${dayName}, ${date} às ${scheduleTime}`
+  }
+  return '—'
+}
+
+function ScheduleSection({
+  profile,
+  paused,
+  onSaved,
+}: {
+  profile: { scheduleDays: number[]; scheduleTime: string | null } | undefined
+  paused: boolean
+  onSaved: (msg: string) => void
+}) {
+  const [days, setDays] = useState<number[]>(() => profile?.scheduleDays ?? [1, 3, 5])
+  const [time, setTime] = useState<string>(() => profile?.scheduleTime ?? '08:00')
+
+  // sync when profile loads
+  useEffect(() => {
+    if (profile) {
+      setDays(profile.scheduleDays)
+      setTime(profile.scheduleTime ?? '08:00')
+    }
+  }, [profile])
+
+  const updateSchedule = trpc.user.updateSchedule.useMutation({
+    onSuccess: () => onSaved('Agendamento salvo!'),
+    onError: (e) => onSaved(e.message),
+  })
+
+  const toggleDay = (d: number) =>
+    setDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d])
+
+  const next = nextExecution(days, time)
+
+  return (
+    <div
+      className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6"
+      style={paused ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
+    >
+      <p className="text-[#666] text-xs font-semibold uppercase tracking-widest mb-4">Agendamento</p>
+
+      {/* Day toggles */}
+      <div className="flex gap-1.5 mb-4">
+        {DAY_LABELS.map((label, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => toggleDay(i)}
+            className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+              days.includes(i)
+                ? 'bg-[#b5ff4e] text-[#111] border-[#b5ff4e]'
+                : 'bg-[#1a1a1a] text-[#666] border-[#2a2a2a] hover:border-[#444]'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Time input */}
+      <div className="flex items-center gap-3 mb-4">
+        <label className="text-[#888] text-sm shrink-0">Horário</label>
+        <input
+          type="time"
+          step={3600}
+          value={time}
+          onChange={(e) => setTime(e.target.value)}
+          className="bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-[#b5ff4e]"
+        />
+      </div>
+
+      {/* Next execution badge */}
+      {next !== '—' && (
+        <div className="mb-4 px-3 py-1.5 bg-[#111] border border-[#2a2a2a] rounded-lg text-xs text-[#888]">
+          Próxima execução: <span className="text-white font-medium">{next}</span>
+        </div>
+      )}
+
+      {/* Save button */}
+      <button
+        type="button"
+        onClick={() => updateSchedule.mutate({ scheduleDays: days, scheduleTime: time || null })}
+        disabled={updateSchedule.isPending}
+        className="w-full py-2 rounded-lg bg-[#252525] border border-[#2a2a2a] text-white text-sm font-semibold hover:border-[#b5ff4e] hover:text-[#b5ff4e] disabled:opacity-50 transition-colors"
+      >
+        {updateSchedule.isPending ? 'Salvando...' : 'Salvar agendamento'}
+      </button>
+    </div>
   )
 }
 
@@ -235,6 +349,7 @@ export default function DashboardPage() {
     <div className="flex flex-col flex-1 min-h-0">
       <TopNav
         name={profile?.name}
+        plan={plan}
         onTrigger={() => triggerPipeline.mutate()}
         triggering={triggerPipeline.isPending}
       />
@@ -379,6 +494,13 @@ export default function DashboardPage() {
                   </div>
                 )}
               </div>
+
+              {/* AGENDAMENTO */}
+              <ScheduleSection
+                profile={profile ? { scheduleDays: profile.scheduleDays, scheduleTime: profile.scheduleTime } : undefined}
+                paused={paused}
+                onSaved={setToast}
+              />
             </div>
 
             {/* ── Col 2: Performance ──────────────────────────────────────── */}

@@ -115,4 +115,18 @@ export const userRouter = createTRPCRouter({
     })
     return { cvUrl: updated.cvUrl }
   }),
+
+  updateSchedule: protectedProcedure
+    .input(
+      z.object({
+        scheduleDays: z.array(z.number().int().min(0).max(6)),
+        scheduleTime: z.string().regex(/^\d{2}:00$/).nullable(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.prisma.user.update({
+        where: { id: ctx.user.id },
+        data: input,
+      })
+    }),
 })

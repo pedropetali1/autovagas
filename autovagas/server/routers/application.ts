@@ -120,7 +120,8 @@ export const applicationRouter = createTRPCRouter({
 
       return ctx.prisma.applicationLog.findMany({
         where: { applicationId: input.applicationId },
-        orderBy: { createdAt: 'asc' },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
       })
     }),
 
