@@ -4,6 +4,7 @@ import { createTRPCRouter, protectedProcedure } from '@/server/trpc'
 import { ApplicationStatus, Plan } from '@prisma/client'
 import { sendEmail } from '@/lib/email'
 import { scraperQueue, matchingQueue, applyQueue } from '@/lib/queues'
+import { getCurrentBRTTime } from '@/lib/timezone'
 
 export const applicationRouter = createTRPCRouter({
   list: protectedProcedure
@@ -145,9 +146,8 @@ export const applicationRouter = createTRPCRouter({
 
     // Free plan: 1 pipeline run per day
     if (user.plan === Plan.FREE) {
-      const todayStart = new Date()
-      todayStart.setHours(0, 0, 0, 0)
-      if (user.lastPipelineRunAt && user.lastPipelineRunAt >= todayStart) {
+      const { todayStartUTC } = getCurrentBRTTime()
+      if (user.lastPipelineRunAt && user.lastPipelineRunAt >= todayStartUTC) {
         throw new TRPCError({ code: 'FORBIDDEN', message: 'PIPELINE_LIMIT_REACHED' })
       }
     }

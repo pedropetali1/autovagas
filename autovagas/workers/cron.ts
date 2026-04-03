@@ -1,5 +1,6 @@
 import { Worker, Queue, type Job } from 'bullmq'
 import { prisma } from '@/lib/prisma'
+import { getCurrentBRTTime } from '@/lib/timezone'
 import { scraperQueue } from './scraper'
 
 // ─── Queue definitions ────────────────────────────────────────────────────────
@@ -62,16 +63,8 @@ async function runDailyPipeline(): Promise<CronStats> {
     stats.reasons['incomplete_profile'] = (stats.reasons['incomplete_profile'] ?? 0) + incompleteProfileSkipped
   }
 
-  // 3. Compute "today 00:00 BRT" as UTC
-  // BRT = UTC-3; today 00:00 BRT = today 03:00 UTC
-  const now = new Date()
-  const todayBrtStart = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 3, 0, 0, 0),
-  )
-  // If current UTC time is before 03:00, we're still in "yesterday BRT" — go back one day
-  if (now.getTime() < todayBrtStart.getTime()) {
-    todayBrtStart.setUTCDate(todayBrtStart.getUTCDate() - 1)
-  }
+  // 3. Compute "today 00:00 BRT" as UTC using centralized helper
+  const { todayStartUTC: todayBrtStart } = getCurrentBRTTime()
 
   // 4. For each eligible user, check quota and enqueue scraper
   for (const user of usersWithProfile) {
