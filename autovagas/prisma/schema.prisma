@@ -51,6 +51,8 @@ model User {
   emailOnFailed     Boolean       @default(true)
   automationPaused    Boolean       @default(false)
   lastPipelineRunAt   DateTime?
+  scheduleDays        Int[]         @default([1, 2, 3, 4, 5])
+  scheduleTime        String?
   excludeCompanies    String[]      @default([])
   minSalary           Float?
   createdAt           DateTime      @default(now())
