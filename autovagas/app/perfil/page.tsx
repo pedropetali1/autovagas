@@ -220,10 +220,11 @@ function ProfileForm() {
   const searchParams = useSearchParams()
   const isSetup = searchParams.get('setup') === '1'
 
+  // CV is shown as a recommendation, not a blocker for dashboard access
   const missingItems = !profile ? [] : [
     !profile.desiredRole && 'cargo desejado',
     profile.skills.length < 3 && `skills (${profile.skills.length}/3)`,
-    !profile.cvUrl && 'CV (PDF)',
+    !profile.cvUrl && 'CV (PDF — necessário para candidaturas automáticas)',
   ].filter(Boolean) as string[]
 
   const skeleton = 'bg-[#2a2a2a] animate-pulse rounded'

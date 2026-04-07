@@ -28,7 +28,13 @@ export default function SignUpPage() {
     })
 
     if (error) {
-      setError(error.message)
+      const friendly: Record<string, string> = {
+        'email rate limit exceeded': 'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
+        'User already registered': 'Este e-mail já está cadastrado. Tente fazer login.',
+        'Password should be at least 6 characters.': 'A senha deve ter pelo menos 6 caracteres.',
+        'Unable to validate email address: invalid format': 'Endereço de e-mail inválido.',
+      }
+      setError(friendly[error.message] ?? error.message)
       setLoading(false)
       return
     }

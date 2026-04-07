@@ -2,13 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useSearchParams, useRouter, usePathname } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { trpc } from '@/lib/trpc'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function profileIsIncomplete(profile: { desiredRole?: string | null; cvUrl?: string | null; skills: { id: string }[] } | undefined) {
-  if (!profile) return false
-  return !profile.desiredRole || !profile.cvUrl || profile.skills.length < 3
+// CV is not required to view the dashboard — only for running the pipeline.
+// We only block access if the user hasn't defined their role or minimum skills,
+// since those are needed to find and filter relevant jobs.
+function profileIsIncomplete(profile: { desiredRole?: string | null; skills: { id: string }[] } | undefined) {
+  if (!profile) return true // No profile loaded yet = treat as incomplete
+  return !profile.desiredRole || profile.skills.length < 3
 }
 
 // ─── Status config ────────────────────────────────────────────────────────────
@@ -92,39 +95,23 @@ function ScoreRing({ pct }: { pct: number }) {
   )
 }
 
-// ─── Top nav ──────────────────────────────────────────────────────────────────
+// ─── Top bar (dashboard-specific actions) ────────────────────────────────────
+// Note: navigation is handled by the AppShell sidebar. This bar only shows
+// the pipeline trigger and user info — no duplicated nav links.
 function TopNav({ name, plan, onTrigger, triggering }: {
   name: string | undefined
   plan: string
   onTrigger: () => void
   triggering: boolean
 }) {
-  const pathname = usePathname()
-  const tabs = [
-    { href: '/dashboard', label: 'Dashboard' },
-    { href: '/vagas', label: 'Vagas' },
-    { href: '/perfil', label: 'Perfil' },
-  ]
   const triggerTooltip = plan === 'Free' ? 'Busca manual (1x por dia)' : 'Buscar vagas agora'
   return (
     <header className="flex items-center justify-between px-8 py-4 border-b border-[#2a2a2a] shrink-0">
-      <div className="flex items-center gap-6">
-        <h1 className="text-white font-bold text-lg tracking-tight">AutoVagas</h1>
-        <nav className="flex items-center gap-1">
-          {tabs.map((t) => (
-            <Link
-              key={t.href}
-              href={t.href}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                pathname === t.href
-                  ? 'bg-[#b5ff4e] text-[#111]'
-                  : 'text-[#888] hover:text-white hover:bg-[#252525]'
-              }`}
-            >
-              {t.label}
-            </Link>
-          ))}
-        </nav>
+      <div className="flex items-center gap-3">
+        <h1 className="text-white font-bold text-lg tracking-tight">Dashboard</h1>
+        <span className="text-sm font-medium bg-[#252525] text-[#888] px-2.5 py-0.5 rounded-full border border-[#2a2a2a]">
+          {plan}
+        </span>
       </div>
       <div className="flex items-center gap-3">
         <button
@@ -150,13 +137,7 @@ function TopNav({ name, plan, onTrigger, triggering }: {
             </>
           )}
         </button>
-        <Link
-          href="/planos"
-          className="px-3 py-1.5 rounded-lg text-sm font-medium bg-[#1e1e1e] text-[#888] border border-[#2a2a2a] hover:border-[#444] hover:text-white transition-colors"
-        >
-          Planos
-        </Link>
-        <div className="w-8 h-8 rounded-full bg-[#b5ff4e] flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full bg-[#b5ff4e] flex items-center justify-center" title={name}>
           <span className="text-[#111] font-bold text-xs">
             {name?.charAt(0).toUpperCase() ?? '?'}
           </span>
@@ -247,8 +228,9 @@ function ScheduleSection({
 
       {/* Time input */}
       <div className="flex items-center gap-3 mb-4">
-        <label className="text-[#888] text-sm shrink-0">Horário</label>
+        <label htmlFor="schedule-time" className="text-[#888] text-sm shrink-0">Horário</label>
         <input
+          id="schedule-time"
           type="time"
           step={3600}
           value={time}
@@ -279,7 +261,7 @@ function ScheduleSection({
 
 // ─── Dashboard Page ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const { data: profile, isLoading: profileLoading } = trpc.user.getProfile.useQuery()
+  const { data: profile, isLoading: profileLoading, isError: profileError } = trpc.user.getProfile.useQuery()
   const { data: stats, isLoading: statsLoading } = trpc.application.getStats.useQuery()
   const { data: timeline, isLoading: timelineLoading } = trpc.application.getTimeline.useQuery()
   const { data: pipelineStatus } = trpc.application.getPipelineStatus.useQuery(undefined, {
@@ -292,10 +274,10 @@ export default function DashboardPage() {
 
   // ── Redirect if profile incomplete ──────────────────────────────────────────
   useEffect(() => {
-    if (!profileLoading && profileIsIncomplete(profile)) {
+    if (!profileLoading && !profileError && profileIsIncomplete(profile)) {
       router.replace('/perfil?setup=1')
     }
-  }, [profile, profileLoading, router])
+  }, [profile, profileLoading, profileError, router])
 
   // ── Checkout success toast ───────────────────────────────────────────────────
   const [toast, setToast] = useState<string | null>(null)
@@ -381,6 +363,16 @@ export default function DashboardPage() {
               </div>
             )
           })()}
+
+          {/* ── No CV banner ───────────────────────────────────────────────── */}
+          {!profileLoading && !profileError && profile && !profile.cvUrl && (
+            <div className="flex items-center gap-2 bg-[#1a1a2e] border border-[#2a2a5e] rounded-xl px-4 py-3 text-sm text-[#93c5fd]">
+              <span className="font-bold">ℹ</span>
+              <span>
+                Adicione seu <a href="/perfil" className="underline font-medium hover:text-white transition-colors">currículo (CV)</a> para ativar as candidaturas automáticas.
+              </span>
+            </div>
+          )}
 
           {/* ── Paused banner ──────────────────────────────────────────────── */}
           {paused && (

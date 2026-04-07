@@ -11,7 +11,11 @@
     "db:push": "prisma db push --schema=./prisma/schema.prisma",
     "db:generate": "prisma generate --schema=./prisma/schema.prisma",
     "db:studio": "prisma studio --schema=./prisma/schema.prisma",
-    "admin:promote": "node --env-file=.env.local --import tsx scripts/promote-admin.ts"
+    "admin:promote": "node --env-file=.env.local --import tsx scripts/promote-admin.ts",
+    "test:e2e": "dotenv -e .env.local -- playwright test",
+    "test:e2e:ui": "dotenv -e .env.local -- playwright test --ui",
+    "test:e2e:noauth": "dotenv -e .env.local -- playwright test --project=unauthenticated",
+    "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.5.0",
@@ -40,6 +44,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

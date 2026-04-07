@@ -5,10 +5,12 @@ import superjson from 'superjson'
 
 export async function createTRPCContext() {
   const supabase = await createSupabaseServerClient()
+  // getSession() decodes the JWT locally (no network round-trip).
+  // The session has already been validated by proxy.ts for every protected route.
   const {
-    data: { user: supabaseUser },
-  } = await supabase.auth.getUser()
-  return { supabaseUser, prisma }
+    data: { session },
+  } = await supabase.auth.getSession()
+  return { supabaseUser: session?.user ?? null, prisma }
 }
 
 type Context = Awaited<ReturnType<typeof createTRPCContext>>
@@ -25,8 +27,16 @@ const enforceAuth = t.middleware(async ({ ctx, next }) => {
     throw new TRPCError({ code: 'UNAUTHORIZED' })
   }
 
-  let user = await ctx.prisma.user.findUnique({
-    where: { supabaseId: ctx.supabaseUser.id },
+  // Try to find by supabaseId first, then fall back to email.
+  // The email fallback handles the case where a user deleted and re-created their
+  // Supabase account (same email, new UUID) — we relink instead of creating a duplicate.
+  let user = await ctx.prisma.user.findFirst({
+    where: {
+      OR: [
+        { supabaseId: ctx.supabaseUser.id },
+        { email: ctx.supabaseUser.email! },
+      ],
+    },
   })
 
   if (!user) {
@@ -38,6 +48,12 @@ const enforceAuth = t.middleware(async ({ ctx, next }) => {
           (ctx.supabaseUser.user_metadata?.name as string | undefined) ||
           ctx.supabaseUser.email!.split('@')[0],
       },
+    })
+  } else if (user.supabaseId !== ctx.supabaseUser.id) {
+    // Relink existing profile to new Supabase UUID
+    user = await ctx.prisma.user.update({
+      where: { id: user.id },
+      data: { supabaseId: ctx.supabaseUser.id },
     })
   }
 
